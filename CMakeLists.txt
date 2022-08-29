@@ -3,10 +3,11 @@ project(pathtracer)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/bin)
 
-file(GLOB_RECURSE SRC
-        ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE SRC_FILES
+        ${CMAKE_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/*.h)
 
-add_executable(${PROJECT_NAME} ${SRC} ${INC} )
+add_executable(${PROJECT_NAME} ${SRC_FILES} )
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/stb_image)

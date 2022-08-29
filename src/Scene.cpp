@@ -93,17 +93,6 @@ void Scene::addModel(const string &filepath) {
     }
 }
 
-
-
-//void Scene::addSkybox(const string &filepath) {
-//    m_skybox = new Skybox(filepath);
-//    if (!m_skybox->m_valid) {
-//        delete m_skybox;
-//        m_skybox = nullptr;
-//    }
-//}
-
-
 Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1e10*/) {
     int cnt = 0;
     Intersection is;
@@ -112,21 +101,6 @@ Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1
 }
 
 Ray Scene::getRay(int x, int y) {
-    //// angle range
-    //float rt = m_fov * PI / 180.f;
-    //float d = rt / m_height;
-    //float rp = d * m_width;
-    //// pixel location
-    //float theta = ((float) y / m_height - 0.5f) * rt;
-    //float phi = ((float) x / m_width - 0.5f) * rp;
-    //// random ray
-    //theta += (rand01() - 0.5f) * d;
-    //phi += (rand01() - 0.5f) * d;
-    //Vec3f dir =
-    //        m_right * cos(theta) * sin(phi)
-    //        + m_up * sin(theta)
-    //        + m_front * cos(theta) * cos(phi);
-    //return Ray(m_eye, dir);
     float h = std::tan(m_fov * PI / 180.f * 0.5f) * 2.f;
     float asp = static_cast<float>(m_width) / m_height;
     Vec3f ver = m_up * h;

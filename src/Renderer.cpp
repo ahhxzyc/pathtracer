@@ -12,9 +12,14 @@
 using namespace std;
 
 
-Renderer::Renderer(Scene *scene) : m_scene(scene) {
-    // create frame buffer
-    fb.resize(scene->m_width * scene->m_height);
+Renderer::Renderer(Scene *scene) : m_scene(scene)
+{
+    m_Film = new Film({m_scene->m_width, m_scene->m_height});
+}
+
+Renderer::~Renderer()
+{
+    delete m_Film;
 }
 
 auto balance_heuristic(float p1, float p2)
@@ -40,13 +45,13 @@ void Renderer::render()
         {
             auto wi = pix % w, hi = pix / w;
             auto color = trace01(m_scene->getRay(wi, hi), m_max_depth);
-            fb[pix] = (fb[pix] * static_cast<float>(rid) + color) / static_cast<float>(rid + 1);
+            m_Film->AddSample({wi, hi}, color);
         }
         printf("rid: %d\n", rid);
         if (rid % 2 == 0)
         {
             string name = "output_" + to_string(rid) + ".bmp";
-            save(name);
+            m_Film->Save(name);
         }
     }
 }
@@ -105,15 +110,16 @@ Vec3f Renderer::trace01(Ray ray, int depth)
     {
         return Vec3f(0, 0, 0);
     }
+    return is.normal * 0.5f + Vec3f(0.5f);
 
-    Vec3f Lo(0,0,0);
-    Lo = is.material->ke;
+    //Vec3f Lo(0,0,0);
+    //Lo = is.material->ke;
 
-    float termination_p = 0.2f;
-    if (rand01() < termination_p)
-    {
-        return Lo;
-    }
+    //float termination_p = 0.2f;
+    //if (rand01() < termination_p)
+    //{
+    //    return Lo;
+    //}
 
     // Perform the 2 sampling strategies on separate parts of the lighting
     //{
@@ -132,17 +138,17 @@ Vec3f Renderer::trace01(Ray ray, int depth)
     //        // https://canvas.dartmouth.edu/courses/35073/files/folder/Slides
     //    }
     //}
-    {
-        // Indirect lighting, cosine weighted sampling on hemisphere
-        float pdf;
-        Vec3f dir = sample_hemisphere(is.normal, pdf);
-        Ray ri(is.point, dir);
-        Vec3f Li = trace01(ri, depth - 1);
-        Vec3f fr = is.brdf(ri.dir, -ray.dir);
-        float cos = abs_dot(ri.dir, is.normal);
-        Lo += fr * Li * cos / pdf;
-    }
-    return Lo / (1.f - termination_p);
+    //{
+    //    // Indirect lighting, cosine weighted sampling on hemisphere
+    //    float pdf;
+    //    Vec3f dir = sample_hemisphere(is.normal, pdf);
+    //    Ray ri(is.point, dir);
+    //    Vec3f Li = trace01(ri, depth - 1);
+    //    Vec3f fr = is.brdf(ri.dir, -ray.dir);
+    //    float cos = abs_dot(ri.dir, is.normal);
+    //    Lo += fr * Li * cos / pdf;
+    //}
+    //return Lo / (1.f - termination_p);
 }
 
 Vec3f Renderer::trace_balanced(Ray ray, int depth)
@@ -258,30 +264,30 @@ Vec3f Renderer::sample_hemisphere(Vec3f normal, float &pdf) const {
     return dir;
 }
 
-void Renderer::save(const string &filepath) const {
-    // convert to uchar
-    vector<unsigned char> colorsUchar;
-    auto fp = reinterpret_cast<const float*>(fb.data());
-    auto cnt = fb.size() * 3;
-    for (int i = 0; i < cnt; i ++ ) {
-        auto f = clamp(0, 1, std::pow(fp[i], 1.f/2.2f));
-        colorsUchar.push_back((unsigned char)(f * 255.99));
-    }
-    // save as bmp file
-    stbi_flip_vertically_on_write(true);
-    int success = stbi_write_bmp(
-            filepath.c_str(),
-            m_scene->m_width,
-            m_scene->m_height, 
-            3, 
-            colorsUchar.data()
-    );
-    if (success) {
-        cout << "image saved: " << filepath << endl;
-    } else {
-        cout << "failed to save image " << filepath << endl;
-    }
-}
+//void Renderer::save(const string &filepath) const {
+//    // convert to uchar
+//    vector<unsigned char> colorsUchar;
+//    auto fp = reinterpret_cast<const float*>(fb.data());
+//    auto cnt = fb.size() * 3;
+//    for (int i = 0; i < cnt; i ++ ) {
+//        auto f = clamp(0, 1, std::pow(fp[i], 1.f/2.2f));
+//        colorsUchar.push_back((unsigned char)(f * 255.99));
+//    }
+//    // save as bmp file
+//    stbi_flip_vertically_on_write(true);
+//    int success = stbi_write_bmp(
+//            filepath.c_str(),
+//            m_scene->m_width,
+//            m_scene->m_height, 
+//            3, 
+//            colorsUchar.data()
+//    );
+//    if (success) {
+//        cout << "image saved: " << filepath << endl;
+//    } else {
+//        cout << "failed to save image " << filepath << endl;
+//    }
+//}
 
 
 std::tuple<Vec3f,float> Renderer::sample_light_source()

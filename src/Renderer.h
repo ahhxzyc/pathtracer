@@ -2,6 +2,7 @@
 
 #include "Types.h"
 #include "Ray.h"
+#include "Film.h"
 #include "Scene.h"
 
 #include <vector>
@@ -15,15 +16,13 @@ class Model;
 class Renderer {
 public:
     Renderer(Scene *pScene);
-    ~Renderer() = default;
+    ~Renderer();
 
     // get frame buffer of the rendered scene
     void render();
     // get the color of the traced ray
     Vec3f trace01(Ray ray, int depth);
     Vec3f trace_balanced(Ray ray, int depth);
-    // save iamge
-    void save(const string &filepath) const;
     
     // samplers
     bool brdf_importance_sampling(Vec3f normal, Vec3f wo, float ns, Vec3f &res);
@@ -36,8 +35,7 @@ public:
 private:
     // the scene
     Scene *m_scene;
-    // frame buffer
-    vector<Vec3f> fb;
+    Film *m_Film;
     // samples per pixel
     int m_spp = 5000;
     // max depth of recursion
