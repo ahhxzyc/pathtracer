@@ -4,12 +4,11 @@
 #include <iostream>
 
 
-#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 Scene::Scene(int w, int h) : m_width(w), m_height(h) {
-    m_front = (m_lookat - m_eye).normalized();
-    m_right = m_front.cross(m_up);
+    m_front = glm::normalize(m_lookat - m_eye);
+    m_right = glm::cross(m_front, m_up);
 }
 
 Scene::~Scene() {
@@ -43,49 +42,51 @@ void Scene::addModel(const string &filepath) {
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& materials = reader.GetMaterials();
+    
+    std::vector<std::shared_ptr<Material>> mats;
+    for (auto &tmat : materials)
+    {
+        mats.push_back(std::make_shared<Material>());
+        auto &mat = mats.back();
+        if (tmat.diffuse_texname.empty())
+            mat->kd_map = std::make_shared<Texture>(Vec3f(tmat.diffuse[0], tmat.diffuse[1], tmat.diffuse[2]));
+        else
+            mat->kd_map = std::make_shared<Texture>(reader_config.mtl_search_path + "/" + tmat.diffuse_texname);
+        mat->ke = Vec3f(tmat.emission[0], tmat.emission[1], tmat.emission[2]);
+    }
 
-    // Loop over shapes
-    vector<Vec3f> verts;
-    vector<Vec3f> norms;
-    for (size_t s = 0; s < shapes.size(); s++) {
+    for (size_t s = 0; s < shapes.size(); s++)
+    {
         // Loop over faces(polygon)
         size_t index_offset = 0;
-        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+        auto num_faces = shapes[s].mesh.num_face_vertices.size();
+        m_tris.reserve(m_tris.size() + num_faces);
+
+        for (size_t f = 0; f < num_faces; f++) {
             int fv = shapes[s].mesh.num_face_vertices[f];
 
             // Loop over vertices in the face.
+            auto &tri = m_tris.emplace_back();
             for (size_t v = 0; v < fv; v++) {
                 // access to vertex
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-                verts.emplace_back(
-                        attrib.vertices[3*idx.vertex_index+0],
-                        attrib.vertices[3*idx.vertex_index+1],
-                        attrib.vertices[3*idx.vertex_index+2]);
-                norms.emplace_back(
-                        attrib.normals[3*idx.vertex_index+0],
-                        attrib.normals[3*idx.vertex_index+1],
-                        attrib.normals[3*idx.vertex_index+2]);
+                tri.p[v].x = attrib.vertices[3 * idx.vertex_index + 0];
+                tri.p[v].y = attrib.vertices[3 * idx.vertex_index + 1];
+                tri.p[v].z = attrib.vertices[3 * idx.vertex_index + 2];
+
+                tri.n[v].x = attrib.normals[3 * idx.vertex_index + 0];
+                tri.n[v].y = attrib.normals[3 * idx.vertex_index + 1];
+                tri.n[v].z = attrib.normals[3 * idx.vertex_index + 2];
+
+                tri.t[v].x = attrib.texcoords[2 * idx.texcoord_index + 0];
+                tri.t[v].y = attrib.texcoords[2 * idx.texcoord_index + 1];
             }
 
-            // create triangle
-            Triangle tri({
-                    verts[verts.size() - 3],
-                    verts[verts.size() - 2],
-                    verts[verts.size() - 1]
-            });
-            tri.n[0] = norms[norms.size() - 3];
-            tri.n[1] = norms[norms.size() - 2];
-            tri.n[2] = norms[norms.size() - 1];
             // bind material
-            Material &mat = tri.mMaterial;
-            auto &tmat = materials[shapes[s].mesh.material_ids[f]];
-            mat.ka = Vec3f(tmat.ambient[0], tmat.ambient[1], tmat.ambient[2]);
-            mat.kd = Vec3f(tmat.diffuse[0], tmat.diffuse[1], tmat.diffuse[2]);
-            mat.ks = Vec3f(tmat.specular[0], tmat.specular[1], tmat.specular[2]);
-            mat.ke = Vec3f(tmat.emission[0], tmat.emission[1], tmat.emission[2]);
+            auto mid = shapes[s].mesh.material_ids[f];
+            tri.mMaterial = mats[mid];
 
-            m_tris.emplace_back(tri);
-            if (tri.mMaterial.ke.norm() > 0.01f)
+            if (tri.mMaterial->is_emissive())
                 m_light_ids.push_back(m_tris.size() - 1);
             index_offset += fv;
         }
@@ -94,34 +95,44 @@ void Scene::addModel(const string &filepath) {
 
 
 
-void Scene::addSkybox(const string &filepath) {
-    m_skybox = new Skybox(filepath);
-    if (!m_skybox->m_valid) {
-        delete m_skybox;
-        m_skybox = nullptr;
-    }
-}
+//void Scene::addSkybox(const string &filepath) {
+//    m_skybox = new Skybox(filepath);
+//    if (!m_skybox->m_valid) {
+//        delete m_skybox;
+//        m_skybox = nullptr;
+//    }
+//}
 
 
-void Scene::intersect(Ray ray, Intersection &inter) {
+Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1e10*/) {
     int cnt = 0;
-    m_octtree->intersect(ray, inter, cnt);
+    Intersection is;
+    m_octtree->intersect(ray, is, cnt, tmin, tmax);
+    return is;
 }
 
 Ray Scene::getRay(int x, int y) {
-    // angle range
-    float rt = m_fov * PI / 180.f;
-    float d = rt / m_height;
-    float rp = d * m_width;
-    // pixel location
-    float theta = ((float) y / m_height - 0.5f) * rt;
-    float phi = ((float) x / m_width - 0.5f) * rp;
-    // random ray
-    theta += (rand01() - 0.5f) * d;
-    phi += (rand01() - 0.5f) * d;
-    Vec3f dir =
-            m_right * cos(theta) * sin(phi)
-            + m_up * sin(theta)
-            + m_front * cos(theta) * cos(phi);
-    return Ray(m_eye, dir);
+    //// angle range
+    //float rt = m_fov * PI / 180.f;
+    //float d = rt / m_height;
+    //float rp = d * m_width;
+    //// pixel location
+    //float theta = ((float) y / m_height - 0.5f) * rt;
+    //float phi = ((float) x / m_width - 0.5f) * rp;
+    //// random ray
+    //theta += (rand01() - 0.5f) * d;
+    //phi += (rand01() - 0.5f) * d;
+    //Vec3f dir =
+    //        m_right * cos(theta) * sin(phi)
+    //        + m_up * sin(theta)
+    //        + m_front * cos(theta) * cos(phi);
+    //return Ray(m_eye, dir);
+    float h = std::tan(m_fov * PI / 180.f * 0.5f) * 2.f;
+    float asp = static_cast<float>(m_width) / m_height;
+    Vec3f ver = m_up * h;
+    Vec3f hor = m_right * h * asp;
+    float u = (static_cast<float>(x) + rand01()) / m_width;
+    float v = (static_cast<float>(y) + rand01()) / m_height;
+    Vec3f tar = m_eye + m_front + (u-0.5f) * hor + (v-0.5f) * ver;
+    return Ray(m_eye, glm::normalize(tar-m_eye));
 }

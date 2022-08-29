@@ -1,23 +1,23 @@
+cmake_minimum_required(VERSION 3.20)
 project(pathtracer)
-cmake_minimum_required(VERSION 3.10)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/bin)
 
-include_directories(
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/thirdparty
-        ${CMAKE_SOURCE_DIR}/thirdparty/Eigen
-        ${CMAKE_SOURCE_DIR}/thirdparty/hdr_loader
-)
 file(GLOB_RECURSE SRC
-        ${CMAKE_SOURCE_DIR}/src/*.cpp
-        ${CMAKE_SOURCE_DIR}/thirdparty/*.cpp
-)
-file(GLOB_RECURSE INC 
-        ${CMAKE_SOURCE_DIR}/include/*.h
-        ${CMAKE_SOURCE_DIR}/thirdparty/*.h
-)
-add_executable(run ${SRC} ${INC} )
+        ${CMAKE_SOURCE_DIR}/src/*.cpp)
+
+add_executable(${PROJECT_NAME} ${SRC} ${INC} )
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/stb_image)
+target_link_libraries(${PROJECT_NAME} stb_image)
+
+set(BUILD_TESTING OFF)
+add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/glm)
+target_link_libraries(${PROJECT_NAME} glm::glm)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/tinyobj)
+target_link_libraries(${PROJECT_NAME} tinyobjloader)
 
 
 FIND_PACKAGE( OpenMP REQUIRED)
@@ -27,11 +27,3 @@ if(OPENMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
-
-
-# macro(print var)
-#     message(STATUS "${var} = ${${var}}")
-# endmacro()
-
-# print(SRC)
-# print(INC)

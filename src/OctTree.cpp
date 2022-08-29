@@ -72,12 +72,12 @@ TreeNode *OctTree::build(AABB bounding, vector<Triangle> tris) {
 
 
 
-void OctTree::intersect(Ray ray, Intersection &inter, int &cnt) {
-    root->intersect(ray, inter, cnt);
+void OctTree::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) {
+    root->intersect(ray, inter, cnt, tmin, tmax);
 }
 
 
-void TreeNode::intersect(Ray ray, Intersection &inter, int &cnt) {
+void TreeNode::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) {
     // // leaf node
     // if (!left && !right) {
     //     tri.intersect(ray, inter);
@@ -98,32 +98,34 @@ void TreeNode::intersect(Ray ray, Intersection &inter, int &cnt) {
     //     if (inter_r.yes)        inter = inter_r;
     //     else                    inter.yes = false;
     // }
-    if (!aabb.intersect(ray)) {
-        // cout << "1";
+    if (!aabb.intersect(ray, tmin, tmax)) {
         return ;
     }
-    Intersection temp_inter;
-    Intersection f_inter;
+    Intersection ret_is;
     // triangles owned by the node
     for (const Triangle &tri : tris) {
-        tri.intersect(ray, temp_inter);
+        Intersection tis;
+        tri.intersect(ray, tis, tmin, tmax);
         cnt ++ ;
-        if (temp_inter.yes) {
-            if (!f_inter.yes || f_inter.t > temp_inter.t)
-                f_inter = temp_inter;
+        if (tis.yes)
+        {
+            tmax = tis.t;
+            ret_is = tis;
         }
     }
     // triangles in the children
     for (int i = 0; i < 8; i ++ ) {
         if (!children[i])
             continue;
-        children[i]->intersect(ray, temp_inter, cnt);
-        if (temp_inter.yes) {
-            if (!f_inter.yes || f_inter.t > temp_inter.t)
-                f_inter = temp_inter;
+        Intersection tis;
+        children[i]->intersect(ray, tis, cnt, tmin, tmax);
+        if (tis.yes)
+        {
+            tmax = tis.t;
+            ret_is = tis;
         }
     }
-    inter = f_inter;
+    inter = ret_is;
 }
 
 

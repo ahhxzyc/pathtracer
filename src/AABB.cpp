@@ -19,28 +19,30 @@ AABB::AABB(Vec3f minp, Vec3f maxp) :
 }
 
 AABB::AABB(Triangle tri) {
-    m_min = tri.p[0].cwiseMin(tri.p[1]).cwiseMin(tri.p[2]);
-    m_max = tri.p[0].cwiseMax(tri.p[1]).cwiseMax(tri.p[2]);
+    m_min = glm::min(glm::min(tri.p[0], tri.p[1]), tri.p[2]);
+    m_max = glm::max(glm::max(tri.p[0], tri.p[1]), tri.p[2]);
 }
 
 // merge two AABBs
 AABB AABB::merge(AABB box) {
     return AABB(
-            m_min.cwiseMin(box.m_min),
-            m_max.cwiseMax(box.m_max)
+            glm::min(m_min, box.m_min),
+            glm::max(m_max, box.m_max)
     );
 }
 
 // intersection with a ray
-bool AABB::intersect(Ray ray) {
-    Vec3f v0 = (m_min - ray.orig).cwiseQuotient(ray.dir);
-    Vec3f v1 = (m_max - ray.orig).cwiseQuotient(ray.dir);
+bool AABB::intersect(Ray ray, float tmin, float tmax) {
+    Vec3f v0 = (m_min - ray.orig) / ray.dir;
+    Vec3f v1 = (m_max - ray.orig) / ray.dir;
     float t0 = std::numeric_limits<float>::min();
     float t1 = std::numeric_limits<float>::max();
     for (int i = 0; i < 3; i ++ ) {
         t0 = max(t0, min(v0[i], v1[i]));
         t1 = min(t1, max(v0[i], v1[i]));
     }
+    t0 = std::max(t0, tmin);
+    t1 = std::min(t1, tmax);
     return t0 < t1;
 }
 

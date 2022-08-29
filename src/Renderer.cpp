@@ -2,10 +2,13 @@
 #include "Triangle.h"
 #include "Utils.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <glm/gtx/norm.hpp>
+
 #include <stb_image_write.h>
 
 #include <iostream>
+#include <fstream>
+
 using namespace std;
 
 
@@ -14,22 +17,33 @@ Renderer::Renderer(Scene *scene) : m_scene(scene) {
     fb.resize(scene->m_width * scene->m_height);
 }
 
+auto balance_heuristic(float p1, float p2)
+{
+    return std::make_tuple(p1/(p1+p2), p2/(p1+p2));
+}
+auto power_heuristic(float p1, float p2)
+{
+    p1 *= p1; p2 *= p2;
+    return balance_heuristic(p1, p2);
+}
+
 
 void Renderer::render()
 {
     auto w = m_scene->m_width;
     auto h = m_scene->m_height;
+
     for (int rid = 0; rid < m_spp; rid ++)
     {
 #pragma omp parallel for
         for (int pix = 0; pix < w * h; pix ++)
         {
             auto wi = pix % w, hi = pix / w;
-            auto color = trace(m_scene->getRay(wi, hi), max_depth);
-            fb[pix] = (fb[pix] * rid + color) / static_cast<float>(rid + 1);
+            auto color = trace01(m_scene->getRay(wi, hi), m_max_depth);
+            fb[pix] = (fb[pix] * static_cast<float>(rid) + color) / static_cast<float>(rid + 1);
         }
         printf("rid: %d\n", rid);
-        if (1)
+        if (rid % 2 == 0)
         {
             string name = "output_" + to_string(rid) + ".bmp";
             save(name);
@@ -37,68 +51,159 @@ void Renderer::render()
     }
 }
 
-Vec3f Renderer::trace(Ray ray, int depth)
+Vec3f Renderer::trace01(Ray ray, int depth)
+{
+    //// find intersection
+    //Intersection inter;
+    //m_scene->intersect(ray);
+    //if (!inter.yes)
+    //{
+    //    return Vec3f(0,0,0);
+    //}
+
+    //Vec3f Lo = Vec3f(0,0,0);
+    //if (depth <= 0)
+    //    return Lo;
+
+    //// direct lighting, sampling on light sources
+    //{
+    //    auto [sam, pdf] = sample_light_source();
+    //    Ray r(
+    //            inter.point,
+    //            samp.point - inter.point
+    //    );
+    //    Intersection is;
+    //    m_scene->intersect(r);
+    //    if (is.yes && almostZero(samp.point - is.point) && r.dir.dot(is.normal) < 0.f)
+    //    {
+    //        Vec3f fr = brdf(r.dir, -ray.dir, inter);
+    //        float cos = r.dir.dot(inter.normal);
+    //        float cos_i = (-r.dir).dot(samp.normal);
+    //        Vec3f diff = samp.point - inter.point;
+    //        Lo += fr.cwiseProduct(samp.material->ke)
+    //                * cos * cos_i / diff.dot(diff) / pdf;
+    //    }
+    //}
+
+    //// indirect lighting, cosine weighted sampling on hemisphere
+    //{
+    //    float pdf;
+    //    Vec3f dir = sample_hemisphere(inter.normal, pdf);
+    //    Ray nray(inter.point, dir);
+    //    Vec3f Li = trace01(nray, depth - 1);
+    //    Vec3f fr = brdf(nray.dir, -ray.dir, inter);
+    //    float cos = nray.dir.dot(inter.normal);
+    //    Lo += fr.cwiseProduct(Li) * cos / pdf;
+    //}
+
+    //return Lo;
+
+    auto is = m_scene->intersect(ray);
+
+    // Hit background or hit back face
+    if (!is.yes || is.is_back)
+    {
+        return Vec3f(0, 0, 0);
+    }
+
+    Vec3f Lo(0,0,0);
+    Lo = is.material->ke;
+
+    float termination_p = 0.2f;
+    if (rand01() < termination_p)
+    {
+        return Lo;
+    }
+
+    // Perform the 2 sampling strategies on separate parts of the lighting
+    //{
+    //    // Direct lighting, sampling on light sources
+    //    auto [sam, pdf] = sample_light_source();
+    //    Ray ri(is.point, sam - is.point);
+    //    auto lis = m_scene->intersect(ri);
+    //    if (lis.yes && !lis.is_back && almostZero(sam - lis.point))
+    //    {
+    //        Vec3f fr = is.brdf(ri.dir, -ray.dir);
+    //        float cos = abs_dot(ri.dir, is.normal, 0.001f);
+    //        float cos_l = abs_dot(-ri.dir, lis.normal, 0.001f);
+    //        float R2 = glm::length2(sam - is.point);
+    //        Lo += fr * lis.material->ke * cos * cos_l / R2 / pdf;
+    //        // ref: Dartmouth slides 14-MIS, one sample case
+    //        // https://canvas.dartmouth.edu/courses/35073/files/folder/Slides
+    //    }
+    //}
+    {
+        // Indirect lighting, cosine weighted sampling on hemisphere
+        float pdf;
+        Vec3f dir = sample_hemisphere(is.normal, pdf);
+        Ray ri(is.point, dir);
+        Vec3f Li = trace01(ri, depth - 1);
+        Vec3f fr = is.brdf(ri.dir, -ray.dir);
+        float cos = abs_dot(ri.dir, is.normal);
+        Lo += fr * Li * cos / pdf;
+    }
+    return Lo / (1.f - termination_p);
+}
+
+Vec3f Renderer::trace_balanced(Ray ray, int depth)
 {
     // find intersection
-    Intersection inter;
-    m_scene->intersect(ray, inter);
-    if (!inter.yes)
-    {
-        //Skybox *ps = m_scene->m_skybox;
-        //if (ps)
-        //    return ps->get_color(ray);
-        //else
-        //    return Vec3f(0, 0, 0);
-        return Vec3f(0);
-    }
-    auto Le = inter.material.ke;
-    if (!depth)
-        return Le;
+    Intersection is;
+    m_scene->intersect(ray);
 
-    // direct lighting, sampling on light sources
-    Vec3f l_dir(0,0,0);
+    // Hit background or hit back face
+    if (!is.yes || is.is_back)
     {
-        float pdf;
-        Intersection p_inter;
-        p_inter = sample_light_source(pdf);
-        Ray r(
-                inter.point,
-                p_inter.point - inter.point
-        );
-        Intersection t_inter;
-        m_scene->intersect(r, t_inter);
-        if (t_inter.yes && almostZero(p_inter.point - t_inter.point)) {
-            // integrate on light source
-            Vec3f fr = brdf(r.dir, -ray.dir, inter);
-            float cos = r.dir.dot(inter.normal);
-            float cos_i = (-r.dir).dot(p_inter.normal);
-            Vec3f diff = p_inter.point - inter.point;
-            l_dir = 
-                    p_inter.material.ke
-                    .cwiseProduct(fr)
-                    * cos * cos_i / diff.dot(diff)
-                    / pdf;
+        return Vec3f(0, 0, 0);
+    }
+
+    auto Lo = is.material->ke;
+    
+    // Run out of hits
+    if (depth <= 0)
+        return Lo;
+
+    // Decide sampling strategy
+    float p_sample_light = 0.5f;
+    if (rand01() < p_sample_light)
+    {
+        // Direct lighting, sampling on light sources
+        auto [sam, pdf] = sample_light_source();
+        Ray ri( is.point, sam - is.point );
+        Intersection lis;
+        m_scene->intersect(ri);
+        if (lis.yes && !lis.is_back && almostZero(sam - lis.point))
+        {
+            Vec3f fr = is.brdf(ri.dir, -ray.dir);
+            float cos = abs_dot(ri.dir, is.normal, 0.001f);
+            float cos_l = abs_dot(-ri.dir, lis.normal, 0.001f);
+            float R2 = glm::length2(sam - is.point);
+            float w_l = p_sample_light * pdf * R2 / cos_l;
+            float w_b = (1 - p_sample_light) * cos_hemisphere_pdf(glm::normalize(sam - is.point), is.normal);
+            Lo += fr * lis.material->ke * cos / (w_l + w_b);
+            // ref: Dartmouth slides 14-MIS, one sample case
+            // https://canvas.dartmouth.edu/courses/35073/files/folder/Slides
         }
     }
-
-    // indirect lighting, sampling on hemisphere
-    Vec3f l_indir(0,0,0);
+    else
     {
-        // cosine weighted sampling on hemisphere
-        // so pdf is actually useless
+        // Indirect lighting, cosine weighted sampling on hemisphere
         float pdf;
-        Vec3f dir = sample_hemisphere(inter.normal, pdf);
-        Ray nray(inter.point, dir);
-        Vec3f l_i = trace(nray, depth + 1);
-        Vec3f fr = brdf(nray.dir, -ray.dir, inter);
-        float cos = nray.dir.dot(inter.normal);
-        l_indir = 
-                l_i.cwiseProduct(fr) 
-                * cos
-                / pdf;
+        Vec3f dir = sample_hemisphere(is.normal, pdf);
+        Ray ri(is.point, dir);
+        Vec3f Li = trace_balanced(ri, depth - 1);
+        Vec3f fr = is.brdf(ri.dir, -ray.dir);
+        float cos = abs_dot(ri.dir, is.normal);
+        float w_l = 0.f;
+        auto p_l = light_pdf(ri);
+        if (p_l)
+        {
+            w_l = p_sample_light * *p_l;
+        }
+        float w_b = (1 - p_sample_light) * pdf;
+        Lo += fr * Li * cos / (w_l + w_b);
     }
-    
-    return Le + l_dir + l_indir;
+    return Lo;
 }
 
 
@@ -135,11 +240,11 @@ Vec3f Renderer::sample_hemisphere(Vec3f normal, float &pdf) const {
     // local coordinate
     Vec3f front;
     if (fabs(normal[0]) > fabs(normal[1])) {
-        front = Vec3f(normal[2], 0, -normal[0]).normalized();
+        front = glm::normalize(Vec3f(normal[2], 0, -normal[0]));
     } else {
-        front = Vec3f(0, normal[2], -normal[1]).normalized();
+        front = glm::normalize(Vec3f(0, normal[2], -normal[1]));
     }
-    Vec3f right = front.cross(normal);
+    Vec3f right = glm::cross(front, normal);
     // cosine weighted sampling
     float phi = rand01() * 2 * PI;
     float theta = 0.5f * acos(1 - 2 * rand01());
@@ -148,16 +253,9 @@ Vec3f Renderer::sample_hemisphere(Vec3f normal, float &pdf) const {
         sin(theta) * sin(phi),
         cos(theta)
     );
-    Vec3f dir = (v[0]*right + v[1]*front + v[2]*normal).normalized();
+    Vec3f dir = glm::normalize(v[0]*right + v[1]*front + v[2]*normal);
     pdf = fabs(v[2]) / PI;
     return dir;
-}
-
-
-Vec3f Renderer::brdf(Vec3f wi, Vec3f wo, Intersection inter) const {
-    if (wi.dot(inter.normal) < 0.f || wo.dot(inter.normal) < 0.f)
-        return Vec3f(0,0,0);
-    return inter.material.kd / PI;
 }
 
 void Renderer::save(const string &filepath) const {
@@ -167,7 +265,7 @@ void Renderer::save(const string &filepath) const {
     auto cnt = fb.size() * 3;
     for (int i = 0; i < cnt; i ++ ) {
         auto f = clamp(0, 1, std::pow(fp[i], 1.f/2.2f));
-        colorsUchar.push_back((unsigned char)(f * 255));
+        colorsUchar.push_back((unsigned char)(f * 255.99));
     }
     // save as bmp file
     stbi_flip_vertically_on_write(true);
@@ -186,33 +284,51 @@ void Renderer::save(const string &filepath) const {
 }
 
 
-Intersection Renderer::sample_light_source(float &pdf) {
+std::tuple<Vec3f,float> Renderer::sample_light_source()
+{
     float area_sum = 0.f;
-    for (int idx : m_scene->m_light_ids) {
-        const Triangle &tri = m_scene->m_tris[idx];
-        area_sum += tri.area();
-    }
-    // pick a light source
+    for (int idx : m_scene->m_light_ids)
+        area_sum += m_scene->m_tris[idx].area();
+    // Pick light source with probability proportional to area
     float r = rand01();
     float t_sum = 0.f;
-    Intersection p;
-    pdf = 0.f;
     for (int idx : m_scene->m_light_ids) {
-        const Triangle &tri = m_scene->m_tris[idx];
+        const auto &tri = m_scene->m_tris[idx];
         t_sum += tri.area() / area_sum;
         if (r < t_sum) {
             // uniform sampling inside the triangle
-            // ref: https://math.stackexchange.com/questions/18686/uniform-random-point-in-triangle-in-3d
-            float u = sqrtf(rand01());
-            float v = rand01();
-            p.point = (1-u)*tri.p[0]
-                    + u*(1-v)*tri.p[1]
-                    + v*u*tri.p[2];
-            p.material = tri.mMaterial;
-            p.normal = tri.normal();
-            pdf = 1 / area_sum;
-            break;
+            // ref: https://jsfiddle.net/jniac/fmx8bz9y/
+            float u = rand01(),  v = rand01();
+            if (u + v > 1)
+            {
+                u = 1 - u;
+                v = 1 - v;
+            }
+            auto P = (1-u-v)*tri.p[0] + u*tri.p[1] + v*tri.p[2];
+            float pdf = 1.f / area_sum;
+            return {P, pdf};
         }
     }
-    return p;
+    return {Vec3f(0,0,0), 0.f};
+}
+
+std::optional<float> Renderer::light_pdf(const Ray& ray)
+{
+    float ret = 0.f;
+    Intersection tis;
+    m_scene->intersect(ray);
+    if (tis.yes && !tis.is_back && tis.tri->mMaterial->is_emissive())
+    {
+        float area_sum = 0.f;
+        for (auto ind : m_scene->m_light_ids)
+            area_sum += m_scene->m_tris[ind].area();
+        return {1.f / area_sum};
+    }
+    return {};
+}
+
+float Renderer::cos_hemisphere_pdf(const Vec3f& dir, const Vec3f &normal)
+{
+    float cos = glm::dot(dir, normal);
+    return cos * std::sqrt(1.f-cos*cos) / PI;
 }

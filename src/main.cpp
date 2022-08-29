@@ -1,7 +1,6 @@
 #include "Types.h"
 #include "Utils.h"
 #include "Renderer.h"
-#include "hdrloader.h"
 
 #include <iostream>
 
@@ -13,6 +12,7 @@ int main()
     scene.addModel("E:/vscodedev/ptracer/res/cornell-box/cornell-box.obj");
     // scene.addSkybox("../res/environment.hdr");
     scene.init_octtree();
+
 
     Renderer renderer(&scene);
     renderer.render();
