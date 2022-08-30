@@ -8,18 +8,18 @@
 
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 using namespace std;
 
 
 Renderer::Renderer(Scene *scene) : m_scene(scene)
 {
-    m_Film = new Film({m_scene->m_width, m_scene->m_height});
+    m_Camera = std::make_shared<Camera>(Size2i{800, 800});
 }
 
 Renderer::~Renderer()
 {
-    delete m_Film;
 }
 
 auto balance_heuristic(float p1, float p2)
@@ -35,23 +35,21 @@ auto power_heuristic(float p1, float p2)
 
 void Renderer::render()
 {
-    auto w = m_scene->m_width;
-    auto h = m_scene->m_height;
-
+    auto size = m_Camera->film->Size();
     for (int rid = 0; rid < m_spp; rid ++)
     {
 #pragma omp parallel for
-        for (int pix = 0; pix < w * h; pix ++)
+        for (int pix = 0; pix < size.x * size.y; pix ++)
         {
-            auto wi = pix % w, hi = pix / w;
-            auto color = trace01(m_scene->getRay(wi, hi), m_max_depth);
-            m_Film->AddSample({wi, hi}, color);
+            auto wi = pix % size.x, hi = pix / size.y;
+            auto color = trace01(m_Camera->GetRay({wi, hi}), m_max_depth);
+            m_Camera->film->AddSample({wi, hi}, color);
         }
         printf("rid: %d\n", rid);
         if (rid % 2 == 0)
         {
             string name = "output_" + to_string(rid) + ".bmp";
-            m_Film->Save(name);
+            m_Camera->film->Save(name);
         }
     }
 }
@@ -106,7 +104,7 @@ Vec3f Renderer::trace01(Ray ray, int depth)
     auto is = m_scene->intersect(ray);
 
     // Hit background or hit back face
-    if (!is.yes || is.is_back)
+    if (!is.yes || is.backface)
     {
         return Vec3f(0, 0, 0);
     }
@@ -158,7 +156,7 @@ Vec3f Renderer::trace_balanced(Ray ray, int depth)
     m_scene->intersect(ray);
 
     // Hit background or hit back face
-    if (!is.yes || is.is_back)
+    if (!is.yes || is.backface)
     {
         return Vec3f(0, 0, 0);
     }
@@ -178,7 +176,7 @@ Vec3f Renderer::trace_balanced(Ray ray, int depth)
         Ray ri( is.point, sam - is.point );
         Intersection lis;
         m_scene->intersect(ri);
-        if (lis.yes && !lis.is_back && almostZero(sam - lis.point))
+        if (lis.yes && !lis.backface && almostZero(sam - lis.point))
         {
             Vec3f fr = is.brdf(ri.dir, -ray.dir);
             float cos = abs_dot(ri.dir, is.normal, 0.001f);
@@ -323,7 +321,7 @@ std::optional<float> Renderer::light_pdf(const Ray& ray)
     float ret = 0.f;
     Intersection tis;
     m_scene->intersect(ray);
-    if (tis.yes && !tis.is_back && tis.tri->mMaterial->is_emissive())
+    if (tis.yes && !tis.backface && tis.tri->mMaterial->is_emissive())
     {
         float area_sum = 0.f;
         for (auto ind : m_scene->m_light_ids)

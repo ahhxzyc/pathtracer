@@ -15,12 +15,14 @@ struct Pixel
 class Film
 {
 public:
-    Film(const Point2i& size);
+    Film(const Size2i& size);
     void    Save(const std::string &filePath);
     Pixel&  GetPixel(const Point2i& location);
     void    AddSample(const Point2i& location, const Vec3f &rgb);
+
+    auto Size() const {return m_Size;}
 private:
-    Point2i m_Size;
+    Size2i m_Size;
     std::unique_ptr<Pixel[]> m_Pixels;
     std::mutex m_Mutex;
 };

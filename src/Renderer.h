@@ -2,7 +2,7 @@
 
 #include "Types.h"
 #include "Ray.h"
-#include "Film.h"
+#include "Camera.h"
 #include "Scene.h"
 
 #include <vector>
@@ -35,7 +35,7 @@ public:
 private:
     // the scene
     Scene *m_scene;
-    Film *m_Film;
+    std::shared_ptr<Camera> m_Camera;
     // samples per pixel
     int m_spp = 5000;
     // max depth of recursion

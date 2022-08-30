@@ -42,7 +42,7 @@ bool Triangle::intersect(Ray ray, Intersection &inter, float tmin, float tmax) c
         if (glm::dot(ray.dir, inter.normal) > 0.f)
         {
             inter.normal = -inter.normal;
-            inter.is_back = true;
+            inter.backface = true;
         }
         return true;
     }

@@ -10,7 +10,7 @@ class Triangle;
 struct Intersection
 {
     bool yes = false;
-    bool is_back = false;
+    bool backface = false;
     float t = std::numeric_limits<float>::max();
     Vec3f point;
     Vec3f normal;

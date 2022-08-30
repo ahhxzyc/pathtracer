@@ -4,7 +4,7 @@
 #include <vector>
 #include <iostream>
 
-Film::Film(const Point2i &size) : m_Size(size)
+Film::Film(const Size2i &size) : m_Size(size)
 {
     m_Pixels = std::unique_ptr<Pixel[]>(new Pixel[size.x * size.y]);
 }

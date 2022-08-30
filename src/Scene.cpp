@@ -6,9 +6,7 @@
 
 #include <tiny_obj_loader.h>
 
-Scene::Scene(int w, int h) : m_width(w), m_height(h) {
-    m_front = glm::normalize(m_lookat - m_eye);
-    m_right = glm::cross(m_front, m_up);
+Scene::Scene()  {
 }
 
 Scene::~Scene() {
@@ -93,20 +91,10 @@ void Scene::addModel(const string &filepath) {
     }
 }
 
-Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1e10*/) {
+Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1e10*/) const
+{
     int cnt = 0;
     Intersection is;
     m_octtree->intersect(ray, is, cnt, tmin, tmax);
     return is;
-}
-
-Ray Scene::getRay(int x, int y) {
-    float h = std::tan(m_fov * PI / 180.f * 0.5f) * 2.f;
-    float asp = static_cast<float>(m_width) / m_height;
-    Vec3f ver = m_up * h;
-    Vec3f hor = m_right * h * asp;
-    float u = (static_cast<float>(x) + rand01()) / m_width;
-    float v = (static_cast<float>(y) + rand01()) / m_height;
-    Vec3f tar = m_eye + m_front + (u-0.5f) * hor + (v-0.5f) * ver;
-    return Ray(m_eye, glm::normalize(tar-m_eye));
 }

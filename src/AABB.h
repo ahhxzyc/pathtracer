@@ -15,7 +15,7 @@ public:
     AABB merge(AABB box);
 
     // intersection with a ray
-    bool intersect(Ray ray, float tmin, float tmax);
+    bool intersect(Ray ray, float tmin, float tmax)const;
     // return one of the 8 sub-boxes;
     AABB getSubBox(int idx);
     

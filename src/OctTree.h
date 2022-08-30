@@ -14,7 +14,7 @@ struct TreeNode {
     TreeNode *children[8] = {nullptr};
 
     // intersection with ray
-    void intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax);
+    void intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) const;
 };
 
 
@@ -26,7 +26,7 @@ public:
     // build octtree
     TreeNode *build(AABB bounding, vector<Triangle> tris);
     // intersection with ray
-    void intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax);
+    void intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax)const ;
     
     // int longest_axis(const vector<Triangle> &tris);
 

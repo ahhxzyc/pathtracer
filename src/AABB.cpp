@@ -32,7 +32,8 @@ AABB AABB::merge(AABB box) {
 }
 
 // intersection with a ray
-bool AABB::intersect(Ray ray, float tmin, float tmax) {
+bool AABB::intersect(Ray ray, float tmin, float tmax) const
+{
     Vec3f v0 = (m_min - ray.orig) / ray.dir;
     Vec3f v1 = (m_max - ray.orig) / ray.dir;
     float t0 = std::numeric_limits<float>::min();

@@ -72,12 +72,14 @@ TreeNode *OctTree::build(AABB bounding, vector<Triangle> tris) {
 
 
 
-void OctTree::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) {
+void OctTree::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) const
+{
     root->intersect(ray, inter, cnt, tmin, tmax);
 }
 
 
-void TreeNode::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) {
+void TreeNode::intersect(Ray ray, Intersection &inter, int &cnt, float tmin, float tmax) const
+{
     // // leaf node
     // if (!left && !right) {
     //     tri.intersect(ray, inter);
