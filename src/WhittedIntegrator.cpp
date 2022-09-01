@@ -20,5 +20,7 @@ Color3f WhittedIntegrator::Li(const Ray &ray, const Scene &scene)
         return Vec3f(0, 0, 0);
     }
 
+    
+
     return is->normal * 0.5f + Vec3f(0.5);
 }

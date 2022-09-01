@@ -10,11 +10,11 @@ class Primitive;
 struct Intersection
 {
     bool backface = false;
-    float t = std::numeric_limits<float>::max();
-    Vec3f point;
+    float t;
+    Point3f point;
+    Point3f bary;
     Vec3f normal;
     const Primitive* primitive;
-    Point3f bary;
 };
 
 
