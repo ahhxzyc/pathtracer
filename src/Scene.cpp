@@ -14,13 +14,6 @@ Scene::~Scene() {
 }
 
 
-
-void Scene::init_octtree() {
-    m_octtree = new OctTree(m_tris);
-}
-
-
-
 void Scene::addModel(const string &filepath) {
     std::string inputfile = filepath;
     tinyobj::ObjReaderConfig reader_config;
@@ -58,13 +51,15 @@ void Scene::addModel(const string &filepath) {
         // Loop over faces(polygon)
         size_t index_offset = 0;
         auto num_faces = shapes[s].mesh.num_face_vertices.size();
-        m_tris.reserve(m_tris.size() + num_faces);
+        m_Primitives.reserve(m_Primitives.size() + num_faces);
 
         for (size_t f = 0; f < num_faces; f++) {
             int fv = shapes[s].mesh.num_face_vertices[f];
 
             // Loop over vertices in the face.
-            auto &tri = m_tris.emplace_back();
+            auto &ptr = m_Primitives.emplace_back();
+            ptr = std::make_shared<Triangle>();
+            auto &tri = *std::static_pointer_cast<Triangle>(ptr);
             for (size_t v = 0; v < fv; v++) {
                 // access to vertex
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
@@ -84,17 +79,14 @@ void Scene::addModel(const string &filepath) {
             auto mid = shapes[s].mesh.material_ids[f];
             tri.mMaterial = mats[mid];
 
-            if (tri.mMaterial->is_emissive())
-                m_light_ids.push_back(m_tris.size() - 1);
+            //if (tri.mMaterial->is_emissive())
+            //    m_light_ids.push_back(m_Primitives.size() - 1);
             index_offset += fv;
         }
     }
 }
 
-Intersection Scene::intersect(Ray ray, float tmin /*= 0.001f*/, float tmax /*= 1e10*/) const
+void Scene::BuildAggregate()
 {
-    int cnt = 0;
-    Intersection is;
-    m_octtree->intersect(ray, is, cnt, tmin, tmax);
-    return is;
+    m_Aggregate = std::make_shared<ListAggregate>(m_Primitives);
 }

@@ -1,7 +1,7 @@
-#include "AABB.h"
+#include "Bound3f.h"
 #include <limits>
 
-AABB::AABB() : 
+Bound3f::Bound3f() : 
         m_min(Vec3f(std::numeric_limits<float>::max(),
                 std::numeric_limits<float>::max(),
                 std::numeric_limits<float>::max())),
@@ -12,27 +12,27 @@ AABB::AABB() :
     
 }
 
-AABB::AABB(Vec3f minp, Vec3f maxp) :
+Bound3f::Bound3f(Vec3f minp, Vec3f maxp) :
         m_min(minp), m_max(maxp)
 {
     
 }
-
-AABB::AABB(Triangle tri) {
-    m_min = glm::min(glm::min(tri.p[0], tri.p[1]), tri.p[2]);
-    m_max = glm::max(glm::max(tri.p[0], tri.p[1]), tri.p[2]);
-}
+//
+//Bound3f::Bound3f(Triangle tri) {
+//    m_min = glm::min(glm::min(tri.p[0], tri.p[1]), tri.p[2]);
+//    m_max = glm::max(glm::max(tri.p[0], tri.p[1]), tri.p[2]);
+//}
 
 // merge two AABBs
-AABB AABB::merge(AABB box) {
-    return AABB(
+Bound3f Bound3f::merge(Bound3f box) {
+    return Bound3f(
             glm::min(m_min, box.m_min),
             glm::max(m_max, box.m_max)
     );
 }
 
 // intersection with a ray
-bool AABB::intersect(Ray ray, float tmin, float tmax) const
+bool Bound3f::intersect(Ray ray, float tmin, float tmax) const
 {
     Vec3f v0 = (m_min - ray.orig) / ray.dir;
     Vec3f v1 = (m_max - ray.orig) / ray.dir;
@@ -48,7 +48,7 @@ bool AABB::intersect(Ray ray, float tmin, float tmax) const
 }
 
 
-AABB AABB::getSubBox(int idx) {
+Bound3f Bound3f::getSubBox(int idx) const {
     int x = idx & 1;
     int y = (idx & 2) >> 1;
     int z = (idx & 4) >> 2;
@@ -59,18 +59,18 @@ AABB AABB::getSubBox(int idx) {
     Vec3f temp(base[0] + side_len,
                 base[1] + side_len,
                 base[2] + side_len);
-    return AABB(base, temp);
+    return Bound3f(base, temp);
 }
 
 
-bool AABB::contain(Vec3f p) {
+bool Bound3f::contain(Vec3f p) {
     for (int i = 0; i < 3; i ++ )
         if (p[i] > m_max[i] || p[i] < m_min[i])
             return false;
     return true;
 }
 
-
-bool AABB::contain(Triangle tri) {
-    return contain(tri.p[0]) && contain(tri.p[1]) && contain(tri.p[2]);
-}
+//
+//bool Bound3f::contain(Triangle tri) {
+//    return contain(tri.p[0]) && contain(tri.p[1]) && contain(tri.p[2]);
+//}

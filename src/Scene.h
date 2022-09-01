@@ -1,10 +1,13 @@
 #pragma once
 
 
-#include <vector>
 #include "Triangle.h"
 #include "OctTree.h"
-#include "Skybox.h"
+#include "Primitive.h"
+#include "Aggregate.h"
+
+#include <vector>
+
 using namespace std;
 
 class Scene {
@@ -12,18 +15,15 @@ public:
     Scene();
     ~Scene();
 
-    void init_octtree();
-
     // load a model from file
     void addModel(const string &filepath);
 
-    // find ray intersection
-    Intersection intersect(Ray ray, float tmin = 0.001f, float tmax = 1e10) const;
+    void BuildAggregate();
+
+    auto &GetAggregate() const {return *m_Aggregate;}
 
 public:
-    // triangles and lights in the scene
-    vector<Triangle> m_tris;
+    std::vector<std::shared_ptr<Primitive>> m_Primitives;
+    std::shared_ptr<Aggregate> m_Aggregate;
     vector<int> m_light_ids;
-    // octtree
-    OctTree *m_octtree = nullptr;
 };
