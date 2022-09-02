@@ -8,8 +8,6 @@
 
 #include <vector>
 
-using namespace std;
-
 class Scene {
 public:
     Scene();
@@ -25,5 +23,5 @@ public:
 public:
     std::vector<std::shared_ptr<Primitive>> m_Primitives;
     std::shared_ptr<Aggregate> m_Aggregate;
-    vector<int> m_light_ids;
+    std::vector<std::shared_ptr<Light>> lights;
 };

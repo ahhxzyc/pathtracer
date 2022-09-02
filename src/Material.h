@@ -26,7 +26,7 @@ struct Material
     std::shared_ptr<Texture> kd_map;
     Vec3f ke;
 
-    bool is_emissive() const
+    bool IsEmissive() const
     {
         return std::abs(glm::length2(ke)) > 0.01f;
     }

@@ -1,5 +1,6 @@
 #include "Scene.h"
 #include "Utils.h"
+#include "Log.h"
 
 #include <iostream>
 
@@ -30,10 +31,12 @@ void Scene::addModel(const string &filepath) {
         std::cout << "TinyObjReader: " << reader.Warning();
     }
 
+    // Get geometry data from loader
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& materials = reader.GetMaterials();
     
+    // Register the materials
     std::vector<std::shared_ptr<Material>> mats;
     for (auto &tmat : materials)
     {
@@ -48,21 +51,41 @@ void Scene::addModel(const string &filepath) {
 
     for (size_t s = 0; s < shapes.size(); s++)
     {
-        // Loop over faces(polygon)
+        // Loop over faces and save to the scene
         size_t index_offset = 0;
         auto num_faces = shapes[s].mesh.num_face_vertices.size();
         m_Primitives.reserve(m_Primitives.size() + num_faces);
 
-        for (size_t f = 0; f < num_faces; f++) {
-            int fv = shapes[s].mesh.num_face_vertices[f];
+        for (size_t f = 0; f < num_faces; f++)
+        {
+            // Get the material of the face
+            auto mid = shapes[s].mesh.material_ids[f];
+            if (mid < 0 || mid >= mats.size())
+            {
+                LOG_ERROR("Invalid material ID");
+                break;
+            }
+            auto &material = mats[mid];
 
-            // Loop over vertices in the face.
+            // Create the face
             auto &ptr = m_Primitives.emplace_back();
-            ptr = std::make_shared<Triangle>();
+            ptr = std::make_shared<Triangle>(material);
             auto &tri = *std::static_pointer_cast<Triangle>(ptr);
+
+            // Register an area light if there is one
+            if (material->IsEmissive())
+            {
+                LOG_INFO("Found an emissive face");
+                auto light = std::make_shared<AreaLight>(tri, material->ke);
+                tri.SetAreaLight(light);
+                lights.push_back(light);
+            }
+
+            // Save vertex information
+            int fv = shapes[s].mesh.num_face_vertices[f];
             for (size_t v = 0; v < fv; v++) {
-                // access to vertex
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+
                 tri.p[v].x = attrib.vertices[3 * idx.vertex_index + 0];
                 tri.p[v].y = attrib.vertices[3 * idx.vertex_index + 1];
                 tri.p[v].z = attrib.vertices[3 * idx.vertex_index + 2];
@@ -75,12 +98,6 @@ void Scene::addModel(const string &filepath) {
                 tri.t[v].y = attrib.texcoords[2 * idx.texcoord_index + 1];
             }
 
-            // bind material
-            auto mid = shapes[s].mesh.material_ids[f];
-            tri.mMaterial = mats[mid];
-
-            //if (tri.mMaterial->is_emissive())
-            //    m_light_ids.push_back(m_Primitives.size() - 1);
             index_offset += fv;
         }
     }
@@ -88,5 +105,5 @@ void Scene::addModel(const string &filepath) {
 
 void Scene::BuildAggregate()
 {
-    m_Aggregate = std::make_shared<ListAggregate>(m_Primitives);
+    m_Aggregate = std::make_shared<BVHAggregate>(m_Primitives);
 }

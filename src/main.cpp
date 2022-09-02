@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Camera.h"
 #include "WhittedIntegrator.h"
+#include "Log.h"
 
 #include <iostream>
 
@@ -10,6 +11,8 @@ using namespace std;
 
 int main()
 {
+    Log::Init();
+
     Scene scene;
     scene.addModel("E:/vscodedev/ptracer/res/cornell-box/cornell-box.obj");
     scene.BuildAggregate();

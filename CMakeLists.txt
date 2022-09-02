@@ -20,6 +20,9 @@ target_link_libraries(${PROJECT_NAME} glm::glm)
 add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/tinyobj)
 target_link_libraries(${PROJECT_NAME} tinyobjloader)
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/spdlog)
+target_link_libraries(${PROJECT_NAME} spdlog_header_only)
+
 
 FIND_PACKAGE( OpenMP REQUIRED)
 if(OPENMP_FOUND)

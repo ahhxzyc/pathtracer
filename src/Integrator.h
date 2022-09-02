@@ -17,7 +17,7 @@ public:
 
     void Render(const Scene &scene);
     
-    virtual Color3f Li(const Ray& ray, const Scene &scene) = 0;
+    virtual Color3f Li(const Ray& ray, const Scene &scene, int depth = 0) = 0;
 
 protected:
     std::shared_ptr<Camera> m_Camera;

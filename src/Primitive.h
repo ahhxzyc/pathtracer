@@ -2,11 +2,14 @@
 
 #include "Types.h"
 #include "Ray.h"
-#include "Bound3f.h"
+#include "BSDF.h"
+#include "Light.h"
 #include <optional>
 #include <memory>
 
 class Primitive;
+class Bound3f;
+
 struct Intersection
 {
     bool backface = false;
@@ -14,42 +17,64 @@ struct Intersection
     Point3f point;
     Point3f bary;
     Vec3f normal;
-    const Primitive* primitive;
+    const GeometricPrimitive* primitive;
+    BSDF bsdf;
+    void BuildBSDF();
 };
 
+struct PrimitiveSample
+{
+    Point3f point;
+    float pdf;
+};
 
 class Primitive
 {
 public:
     virtual ~Primitive() {}
-
-    auto GetBoundingBox() const {return m_Bound;}
-
     virtual std::optional<Intersection> Intersect(const Ray &ray, float tmin, float tmax) const = 0;
+    virtual bool                        ExistIntersection(const Ray &ray, float tmin, float tmax) const = 0;
 
-protected:
-    Bound3f m_Bound;
+    virtual Bound3f BoundingBox() const = 0;
+    virtual Point3f Center() const = 0;
 };
 
-class Triangle : public Primitive
+class GeometricPrimitive : public Primitive
 {
 public:
-    Triangle() {}
-    Triangle(const array<Vec3f, 3> &verts)
-    {
-        for (int i = 0; i < 3; i ++)
-            p[i] = verts[i];
-    }
+    GeometricPrimitive(
+        const std::shared_ptr<Material> &material);
+    
+    const Material*     GetMaterial() const { return m_Material.get(); }
+    const AreaLight*    GetAreaLight() const { return m_AreaLight.get(); }
+    void                SetAreaLight(const std::shared_ptr<AreaLight>& light) {m_AreaLight = light;}
 
-    virtual std::optional<Intersection> Intersect(const Ray &ray, float tmin, float tmax) const;
+    virtual PrimitiveSample Sample() const = 0;
 
-    //float area() const;
-    //Vec3f center() const;
+protected:
+    std::shared_ptr<Material> m_Material;
+    std::shared_ptr<AreaLight> m_AreaLight;
+};
+
+class Triangle : public GeometricPrimitive
+{
+public:
+    Triangle(const std::shared_ptr<Material> &material) : 
+        GeometricPrimitive(material) {}
+
+    virtual std::optional<Intersection> Intersect(const Ray &ray, float tmin, float tmax) const override;
+    virtual bool                        ExistIntersection(const Ray &ray, float tmin, float tmax) const override;
+    virtual PrimitiveSample             Sample() const override;
+
+    virtual Bound3f BoundingBox() const override;
+    virtual Point3f Center() const override;
+
+    float Area() const;
+
     //Vec3f normal() const;
 
 public:
     Vec3f p[3];
     Vec3f n[3];
     Vec2f t[3];
-    std::shared_ptr<Material> mMaterial;
 };
