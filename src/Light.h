@@ -7,8 +7,8 @@ class GeometricPrimitive;
 struct LightSample
 {
     Point3f point;
-    Vec3f direction;
-    Color3f radiance;
+    Vec3f wi;
+    Color3f Le;
     float pdf;
 };
 

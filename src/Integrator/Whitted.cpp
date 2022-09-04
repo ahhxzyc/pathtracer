@@ -1,4 +1,4 @@
-#include "WhittedIntegrator.h"
+#include "Whitted.h"
 #include "Utils.h"
 
 
@@ -30,16 +30,16 @@ Color3f WhittedIntegrator::Li(const Ray &ray, const Scene &scene, int depth)
     auto &bsdf = is->bsdf;
 
     // Add contribution of direct lighting
-    for (const auto &light : scene.lights)
-    {
-        auto sample = light->Sample(is->point);
-        float tmax = glm::length(sample.point - is->point) - 0.0001f;
-        if (!scene.GetAggregate().ExistIntersection({ is->point, sample.direction }, 0.001f, tmax))
-        {
-            Lo += sample.radiance * bsdf.Eval({},{}) * abs_dot(sample.direction, is->normal, 0.f) / sample.pdf;
-            return Lo;
-        }
-    }
+    //for (const auto &light : scene.lights)
+    //{
+    //    auto sample = light->Sample(is->point);
+    //    float tmax = glm::length(sample.point - is->point) - 0.0001f;
+    //    if (!scene.GetAggregate().ExistIntersection({ is->point, sample.direction }, 0.001f, tmax))
+    //    {
+    //        Lo += sample.radiance * bsdf.Eval({},{}) * abs_dot(sample.direction, is->normal, 0.f) / sample.pdf;
+    //        return Lo;
+    //    }
+    //}
 
     // Add indirect lighting coming in specular reflection direction
     if (depth > 0)

@@ -25,6 +25,7 @@ struct Intersection
 struct PrimitiveSample
 {
     Point3f point;
+    Vec3f normal;
     float pdf;
 };
 

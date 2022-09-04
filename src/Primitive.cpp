@@ -45,7 +45,8 @@ PrimitiveSample Triangle::Sample() const
         v = 1 - v;
     }
     auto P = (1 - u - v) * p[0] + u * p[1] + v * p[2];
-    return { P, 1.f / Area() };
+    auto N = glm::normalize((1 - u - v) * n[0] + u * n[1] + v * n[2]);
+    return { P, N, 1.f / Area() };
 
 }
 

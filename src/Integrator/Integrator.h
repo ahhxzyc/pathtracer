@@ -2,7 +2,6 @@
 
 #include "Camera.h"
 #include "Ray.h"
-//#include "Sampler.h"
 #include "Scene.h"
 
 #include <memory>
