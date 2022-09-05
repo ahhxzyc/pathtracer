@@ -94,8 +94,8 @@ void Scene::addModel(const string &filepath) {
                 tri.n[v].y = attrib.normals[3 * idx.vertex_index + 1];
                 tri.n[v].z = attrib.normals[3 * idx.vertex_index + 2];
 
-                tri.t[v].x = attrib.texcoords[2 * idx.texcoord_index + 0];
-                tri.t[v].y = attrib.texcoords[2 * idx.texcoord_index + 1];
+                tri.uv[v].x = attrib.texcoords[2 * idx.texcoord_index + 0];
+                tri.uv[v].y = attrib.texcoords[2 * idx.texcoord_index + 1];
             }
 
             index_offset += fv;

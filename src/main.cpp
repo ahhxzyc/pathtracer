@@ -32,13 +32,9 @@ public:
     {
         // Horizontal layout with 3 buttons
         QHBoxLayout *hLayout = new QHBoxLayout;
-        QPushButton *b1 = new QPushButton("A");
-        QPushButton *b2 = new QPushButton("B");
-        QPushButton *b3 = new QPushButton("C");
+        QPushButton *b1 = new QPushButton("Save");
         m_ImageLabel = new QLabel;
         hLayout->addWidget(b1);
-        hLayout->addWidget(b2);
-        hLayout->addWidget(b3);
         hLayout->addWidget(m_ImageLabel);
 
         QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -46,6 +42,8 @@ public:
 
         setLayout(mainLayout);
         setWindowTitle("Window");
+
+        connect(b1, SIGNAL(clicked()), this, SLOT(Save()));
     }
 
     bool loadFile(const QString &fileName)
@@ -63,11 +61,13 @@ public:
         m_ImageLabel->setPixmap(QPixmap::fromImage(newImage));
     }
 
-    void UpdateImage(const Color3b* buf, int width, int height)
+    void UpdateImage(const Color3b* buf, int width, int height, int frameIndex)
     {
         std::lock_guard<std::mutex> lock(renderMutex);
+        m_FrameIndex = frameIndex;
 
         QImage img((const uchar*)buf, width, height, QImage::Format_RGB888);
+        img = img.mirrored(false, true);
         if (img.isNull())
         {
             LOG_ERROR("bad image");
@@ -80,7 +80,16 @@ public:
         m_ImageLabel->setPixmap(pixmap);
     }
 
+public slots:
+    void Save()
+    {
+        auto pixmap = m_ImageLabel->pixmap();
+        pixmap->save(QString("output_") + QString::number(m_FrameIndex) + QString(".png"));
+        LOG_INFO("Saved {}", m_FrameIndex);
+    }
+
 private:
+    int m_FrameIndex;
     QLabel *m_ImageLabel;
 };
 #include "main.moc"
@@ -102,14 +111,19 @@ int main(int argc, char** argv)
     scene.BuildAggregate();
 
     // Construct integrator
-    auto camera = std::make_shared<Camera>(Size2i{ 100, 100 });
+    auto camera = std::make_shared<Camera>(Size2i{ 1024, 1024 });
     auto integrator = std::make_shared<PathIntegrator>(camera);
     
     auto threadFunc = [&]()
     {
-        integrator->Render(scene);
-        auto size = camera->film->Size();
-        window.UpdateImage(camera->film->GetColorsUchar(), size.x, size.y);
+        for (int framei = 1; ; framei ++ )
+        {
+            integrator->Render(scene);
+            auto size = camera->film->Size();
+            window.UpdateImage(camera->film->GetColorsUchar(), size.x, size.y, framei);
+            if (framei % 200 == 0)
+                window.Save();
+        }
     };
     std::thread renderThread(threadFunc);
 

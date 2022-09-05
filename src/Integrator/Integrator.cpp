@@ -12,7 +12,7 @@ void Integrator::Render(const Scene &scene)
     //int spp = 5000;
     //for (int rid = 0; rid < spp; rid ++)
     //{
-//#pragma omp parallel for
+#pragma omp parallel for
         for (int pix = 0; pix < size.x * size.y; pix ++)
         {
             auto wi = pix % size.x, hi = pix / size.y;
@@ -20,6 +20,6 @@ void Integrator::Render(const Scene &scene)
             m_Camera->film->AddSample({ wi, hi }, color);
         }
         //m_Camera->film->Save("my_output.bmp");
-        LOG_INFO("Finished");
+        //LOG_INFO("Finished");
     //}
 }

@@ -20,10 +20,8 @@ std::optional<Intersection> Triangle::Intersect(const Ray &ray, float tmin, floa
         is.t = t;
         is.point = ray.orig + t * d;
         is.normal = glm::normalize((1 - u - v) * n[0] + u * n[1] + v * n[2]);
+        is.uv = (1-u-v) * uv[0] + u * uv[1] + v * uv[2];
         is.primitive = this;
-        is.bary[0] = 1 - u - v;
-        is.bary[1] = u;
-        is.bary[2] = v;
         if (glm::dot(ray.dir, is.normal) > 0.f)
         {
             is.normal = -is.normal;
@@ -95,6 +93,6 @@ GeometricPrimitive::GeometricPrimitive(
 void Intersection::BuildBSDF()
 {
     auto material = primitive->GetMaterial();
-    auto albedo = material->kd_map->get(bary.y, bary.z);
+    auto albedo = material->kd_map->get(uv[0], uv[1]);
     bsdf.bxdfs.push_back(std::make_shared<DiffuseBRDF>(albedo));
 }

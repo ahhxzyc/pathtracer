@@ -33,6 +33,6 @@ public:
 private:
     Size2i m_Size;
     std::unique_ptr<Pixel[]> m_Pixels;
-    std::unique_ptr<Color3b[]> m_ColorsUchar;
+    std::unique_ptr<std::vector<Color3b>> m_ColorsUchar;
     std::mutex m_Mutex;
 };

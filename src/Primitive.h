@@ -15,8 +15,8 @@ struct Intersection
     bool backface = false;
     float t;
     Point3f point;
-    Point3f bary;
     Vec3f normal;
+    Point2f uv;
     const GeometricPrimitive* primitive;
     BSDF bsdf;
     void BuildBSDF();
@@ -77,5 +77,5 @@ public:
 public:
     Vec3f p[3];
     Vec3f n[3];
-    Vec2f t[3];
+    Vec2f uv[3];
 };

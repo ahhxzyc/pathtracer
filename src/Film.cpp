@@ -7,7 +7,8 @@
 Film::Film(const Size2i &size) : m_Size(size)
 {
     m_Pixels        = std::unique_ptr<Pixel[]>(new Pixel[size.x * size.y]);
-    m_ColorsUchar = std::unique_ptr<Color3b[]>(new Color3b(size.x * size.y));
+    m_ColorsUchar   = 
+        std::unique_ptr<std::vector<Color3b>>(new std::vector<Color3b>(size.x * size.y));
 }
 
 void Film::Save(const std::string &filePath)
@@ -48,7 +49,7 @@ const Color3b *Film::GetColorsUchar() const
     {
         auto rgb = m_Pixels[i].rgb / m_Pixels[i].weight;
         rgb = glm::pow(glm::clamp(rgb, Vec3f(0), Vec3f(1)), Vec3f(gamma));
-        m_ColorsUchar[i] = rgb * 255.99f;
+        (*m_ColorsUchar)[i] = rgb * 255.99f;
     }
-    return m_ColorsUchar.get();
+    return m_ColorsUchar->data();
 }

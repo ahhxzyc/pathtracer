@@ -73,8 +73,6 @@ Color3f PathIntegrator::Li(const Ray &ray, const Scene &scene, int depth /*= 0*/
         if (bounces > 3)
         {
             auto q = std::min(max(max(beta.x, beta.y), beta.z), 0.95f);
-            //auto q = 0.5f;
-            //auto q = std::max(0.05f, 1 - glm::length(beta));
             if (rand01() > q)
                 break;
             beta /= q;
