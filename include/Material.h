@@ -24,7 +24,10 @@ private:
 struct Material
 {
     std::shared_ptr<Texture> kd_map;
+    Vec3f ks;
     Vec3f ke;
+    float shininess;
+    float ior;
 
     bool IsEmissive() const
     {

@@ -22,6 +22,7 @@ std::optional<Intersection> Triangle::Intersect(const Ray &ray, float tmin, floa
         is.normal = glm::normalize((1 - u - v) * n[0] + u * n[1] + v * n[2]);
         is.uv = (1-u-v) * uv[0] + u * uv[1] + v * uv[2];
         is.primitive = this;
+        is.wo = -ray.dir;
         if (glm::dot(ray.dir, is.normal) > 0.f)
         {
             is.normal = -is.normal;
@@ -92,7 +93,30 @@ GeometricPrimitive::GeometricPrimitive(
 
 void Intersection::BuildBSDF()
 {
+    // init local orthonormal basis of the BSDF
+    auto &onb = bsdf.onb;
+    new (&onb) CoordinateSystem(normal);
+    auto localWo = onb.ToLocal(wo);
+
+    // add bxdfs to the BSDF
     auto material = primitive->GetMaterial();
-    auto albedo = material->kd_map->get(uv[0], uv[1]);
-    bsdf.bxdfs.push_back(std::make_shared<DiffuseBRDF>(albedo));
+    auto kd = material->kd_map->get(uv[0], uv[1]);
+    auto ks = material->ks;
+
+    //auto sum = kd + ks;
+    //for (int i = 0; i < 3; i ++)
+    //{
+    //    if (sum[i] > 1.f)
+    //    {
+    //        kd /= sum[i];
+    //        ks /= sum[i];
+    //    }
+    //}
+
+    bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
+    //if (glm::length(ks) > 0.01f)
+    //{
+        //bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, material->shininess, localWo));
+    //}
+
 }

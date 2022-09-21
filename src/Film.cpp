@@ -43,7 +43,6 @@ void Film::AddSample(const Point2i &location, const Vec3f &rgb)
 
 const Color3b *Film::GetColorsUchar() const
 {
-    //return nullptr;
     float gamma = 1.f / 2.2f;
     for (int i = 0; i < m_Size.x * m_Size.y; i ++)
     {

@@ -2,8 +2,8 @@
 #include "Utils.h"
 #include "Scene.h"
 #include "Camera.h"
-#include "Integrator/Whitted.h"
-#include "Integrator/Path.h"
+#include "integrator/Path.h"
+#include "integrator/WhiteFurnace.h"
 #include "Log.h"
 
 #include <QApplication>
@@ -15,6 +15,7 @@
 #include <QHBoxLayout>
 #include <QImageReader>
 #include <QMessageBox>
+#include <QGroupBox>
 #include <QDir>
 
 #include <iostream>
@@ -30,20 +31,23 @@ class Window : public QWidget
 public:
     Window()
     {
-        // Horizontal layout with 3 buttons
-        QHBoxLayout *hLayout = new QHBoxLayout;
-        QPushButton *b1 = new QPushButton("Save");
-        m_ImageLabel = new QLabel;
-        hLayout->addWidget(b1);
-        hLayout->addWidget(m_ImageLabel);
+        auto panelBox = new QGroupBox("Panel");
+        auto panelLayout = new QVBoxLayout;
+        m_pbSave = new QPushButton("Save");
+        m_lbFrameCount = new QLabel;
+        m_lbImage = new QLabel;
+        panelLayout->addWidget(m_pbSave);
+        panelLayout->addWidget(m_lbFrameCount);
+        panelBox->setLayout(panelLayout);
 
-        QVBoxLayout *mainLayout = new QVBoxLayout;
-        mainLayout->addLayout(hLayout);
+        auto mainLayout = new QHBoxLayout;
+        mainLayout->addWidget(panelBox);
+        mainLayout->addWidget(m_lbImage);
 
         setLayout(mainLayout);
         setWindowTitle("Window");
 
-        connect(b1, SIGNAL(clicked()), this, SLOT(Save()));
+        connect(m_pbSave, SIGNAL(clicked()), this, SLOT(Save()));
     }
 
     bool loadFile(const QString &fileName)
@@ -58,7 +62,7 @@ public:
                 .arg(QDir::toNativeSeparators(fileName), reader.errorString()));
             return false;
         }
-        m_ImageLabel->setPixmap(QPixmap::fromImage(newImage));
+        m_lbImage->setPixmap(QPixmap::fromImage(newImage));
     }
 
     void UpdateImage(const Color3b* buf, int width, int height, int frameIndex)
@@ -66,31 +70,35 @@ public:
         std::lock_guard<std::mutex> lock(renderMutex);
         m_FrameIndex = frameIndex;
 
-        QImage img((const uchar*)buf, width, height, QImage::Format_RGB888);
-        img = img.mirrored(false, true);
-        if (img.isNull())
+        m_Image = QImage((const uchar *)buf, width, height, QImage::Format_RGB888)
+            .mirrored(false, true);
+        if (m_Image.isNull())
         {
             LOG_ERROR("bad image");
         }
-        auto pixmap = QPixmap::fromImage(img);
+        auto pixmap = QPixmap::fromImage(m_Image.scaledToHeight(800));
         if (pixmap.isNull())
         {
             LOG_ERROR("bad pix map");
         }
-        m_ImageLabel->setPixmap(pixmap);
+        m_lbImage->setPixmap(pixmap);
+        m_lbFrameCount->setText("Frame Index : " + QString::number(frameIndex));
     }
 
 public slots:
     void Save()
     {
-        auto pixmap = m_ImageLabel->pixmap();
-        pixmap->save(QString("output_") + QString::number(m_FrameIndex) + QString(".png"));
+        auto pixmap = QPixmap::fromImage(m_Image);
+        pixmap.save(QString("output_") + QString::number(m_FrameIndex) + QString(".png"));
         LOG_INFO("Saved {}", m_FrameIndex);
     }
 
 private:
     int m_FrameIndex;
-    QLabel *m_ImageLabel;
+    QLabel *m_lbImage;
+    QLabel *m_lbFrameCount;
+    QPushButton *m_pbSave;
+    QImage m_Image;
 };
 #include "main.moc"
 
@@ -102,16 +110,16 @@ int main(int argc, char** argv)
 
     // Window title
     Window window;
-    //window.loadFile("E:/vscodedev/ptracer/build/output_78.bmp");
     window.show();
 
     // Construct scene
     Scene scene;
-    scene.addModel("E:/vscodedev/ptracer/res/cornell-box/cornell-box.obj");
+    //scene.ParseScene("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
+    scene.ParseScene("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
     scene.BuildAggregate();
 
     // Construct integrator
-    auto camera = std::make_shared<Camera>(Size2i{ 1024, 1024 });
+    auto camera = scene.GetCamera();
     auto integrator = std::make_shared<PathIntegrator>(camera);
     
     auto threadFunc = [&]()
@@ -121,7 +129,7 @@ int main(int argc, char** argv)
             integrator->Render(scene);
             auto size = camera->film->Size();
             window.UpdateImage(camera->film->GetColorsUchar(), size.x, size.y, framei);
-            if (framei % 200 == 0)
+            if (framei - (framei & -framei) == 0)
                 window.Save();
         }
     };

@@ -3,6 +3,15 @@
 #include "Types.h"
 #include "Ray.h"
 
+struct CoordinateSystem
+{
+    Vec3f t, b, n;
+    CoordinateSystem() = default;
+    CoordinateSystem(const Vec3f& normal);
+    Vec3f ToLocal(const Vec3f& worldVec) const;
+    Vec3f ToWorld(const Vec3f& localVec) const;
+};
+
 float abs_dot(const Vec3f &a, const Vec3f &b, float min_value = 0.f);
 
 // clamp a float to [a,b]

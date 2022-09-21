@@ -1,0 +1,15 @@
+set(TARGET_NAME libs)
+
+set(BUILD_TESTING OFF)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/glm)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tinyobj)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/stb_image)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/pugixml)
+
+add_library(${TARGET_NAME} INTERFACE )
+target_link_libraries(${TARGET_NAME} INTERFACE glm::glm)
+target_link_libraries(${TARGET_NAME} INTERFACE tinyobj)
+target_link_libraries(${TARGET_NAME} INTERFACE stb_image)
+target_link_libraries(${TARGET_NAME} INTERFACE spdlog_header_only)
+target_link_libraries(${TARGET_NAME} INTERFACE pugixml)

@@ -44,3 +44,27 @@ bool almostZero(Vec3f v) {
     float eps = 1e-3;
     return fabs(v[0]) < eps && fabs(v[1]) < eps && fabs(v[2]) < eps;
 }
+
+CoordinateSystem::CoordinateSystem(const Vec3f &normal) 
+    : n(normal)
+{
+    auto a = (std::abs(n.x) > 0.9f ? Vec3f(0,1,0) : Vec3f(1,0,0));
+    t = glm::normalize(glm::cross(a, n));
+    b = glm::cross(n, t);
+}
+
+Vec3f CoordinateSystem::ToLocal(const Vec3f &worldVec) const
+{
+    return Vec3f(
+        glm::dot(worldVec, t),
+        glm::dot(worldVec, b),
+        glm::dot(worldVec, n));
+}
+
+Vec3f CoordinateSystem::ToWorld(const Vec3f &localVec) const
+{
+    auto v0 = localVec.x * t;
+    auto v1 = localVec.y * b;
+    auto v2 = localVec.z * n;
+    return v0 + v1 + v2;
+}
