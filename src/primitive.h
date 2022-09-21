@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Types.h"
-#include "Ray.h"
-#include "BSDF.h"
-#include "Light.h"
+#include "common.h"
+#include "bsdf.h"
+#include "light.h"
+#include "material.h"
 #include <optional>
 #include <memory>
 
@@ -34,8 +34,8 @@ class Primitive
 {
 public:
     virtual ~Primitive() {}
-    virtual std::optional<Intersection> Intersect(const Ray &ray, float tmin, float tmax) const = 0;
-    virtual bool                        ExistIntersection(const Ray &ray, float tmin, float tmax) const = 0;
+    virtual std::optional<Intersection> intersect(Ray &ray) const = 0;
+    virtual bool has_intersection(const Ray &ray) const = 0;
     virtual Bound3f BoundingBox() const = 0;
     virtual Point3f Center() const = 0;
 };
@@ -60,8 +60,8 @@ class Triangle : public GeometricPrimitive
 public:
     Triangle(const std::shared_ptr<Material> &material) : 
         GeometricPrimitive(material) {}
-    virtual std::optional<Intersection> Intersect(const Ray &ray, float tmin, float tmax) const override;
-    virtual bool                        ExistIntersection(const Ray &ray, float tmin, float tmax) const override;
+    virtual std::optional<Intersection> intersect(Ray &ray) const override;
+    virtual bool has_intersection(const Ray &ray) const override;
     virtual PrimitiveSample             Sample() const override;
     virtual Bound3f BoundingBox() const override;
     virtual Point3f Center() const override;

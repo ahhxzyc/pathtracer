@@ -1,7 +1,42 @@
 #pragma once
 
-#include "Types.h"
-#include "Ray.h"
+#include <glm/glm.hpp>
+
+using Vec3f = glm::vec3;
+using Vec2f = glm::vec2;
+
+using Point3i = glm::ivec3;
+using Point2i = glm::ivec2;
+using Point3f = glm::vec3;
+using Point2f = glm::vec2;
+using Size2i = glm::ivec2;
+
+using Color3f = glm::vec3;
+using Color3b = glm::u8vec3;
+
+#define PI 3.1415926f
+
+struct Ray
+{
+    Vec3f origin;
+    Vec3f dir;
+    float minT = 0.001f;
+    float maxT = std::numeric_limits<float>::max();
+
+    Ray(Vec3f o, Vec3f d) 
+        : origin(o), dir(glm::normalize(d))
+    {
+
+    }
+
+    static Ray between(const Point3f &a, const Point3f &b)
+    {
+        auto time = glm::length(b - a);
+        Ray ray(a, (b - a) / time);
+        ray.maxT = time - 0.0001f;
+        return ray;
+    }
+};
 
 struct CoordinateSystem
 {

@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <random>
-#include "Utils.h"
+#include "common.h"
 using namespace std;
 
 
@@ -34,7 +34,7 @@ float mixedProduct(const Vec3f &a, const Vec3f &b, const Vec3f &c) {
 }
 
 float distFromPointToRay(const Vec3f &p, const Ray &r) {
-    Vec3f op = p - r.orig;
+    Vec3f op = p - r.origin;
     float t = glm::dot(op, glm::normalize(r.dir));
     float s = glm::length(op);
     return sqrtf(s*s - t*t);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.h"
+#include "common.h"
 #include <glm/gtx/norm.hpp>
 
 #include <string>
@@ -23,7 +23,7 @@ private:
 
 struct Material
 {
-    std::shared_ptr<Texture> kd_map;
+    std::shared_ptr<Texture> kdMap;
     Vec3f ks;
     Vec3f ke;
     float shininess;

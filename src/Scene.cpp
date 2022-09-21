@@ -1,20 +1,14 @@
-#include "Scene.h"
-#include "Utils.h"
+#include "scene.h"
+#include "common.h"
 #include "Log.h"
-#include "Camera.h"
+#include "camera.h"
+#include "material.h"
 
 #include <iostream>
 #include <tiny_obj_loader.h>
 #include <pugixml.hpp>
 
-Scene::Scene()  {
-}
-
-Scene::~Scene() {
-
-}
-
-void Scene::AddModel(const std::string &dir, const std::string &name)
+void Scene::add_model(const std::string &dir, const std::string &name)
 {
     std::string inputfile = dir + "/" + name + ".obj";
     tinyobj::ObjReaderConfig reader_config;
@@ -48,9 +42,9 @@ void Scene::AddModel(const std::string &dir, const std::string &name)
 
         // diffuse map
         if (tmat.diffuse_texname.empty())
-            mat->kd_map = std::make_shared<Texture>(Vec3f(tmat.diffuse[0], tmat.diffuse[1], tmat.diffuse[2]));
+            mat->kdMap = std::make_shared<Texture>(Vec3f(tmat.diffuse[0], tmat.diffuse[1], tmat.diffuse[2]));
         else
-            mat->kd_map = std::make_shared<Texture>(reader_config.mtl_search_path + "/" + tmat.diffuse_texname);
+            mat->kdMap = std::make_shared<Texture>(reader_config.mtl_search_path + "/" + tmat.diffuse_texname);
 
         // specular ks
         mat->ks = Vec3f(tmat.specular[0], tmat.specular[1], tmat.specular[2]);
@@ -59,8 +53,8 @@ void Scene::AddModel(const std::string &dir, const std::string &name)
         mat->shininess = tmat.shininess;
 
         // light radiance
-        auto it = m_LightRadiance.find(tmat.name);
-        if (it != m_LightRadiance.end())
+        auto it = lightRadiance_.find(tmat.name);
+        if (it != lightRadiance_.end())
         {
             mat->ke = it->second;
         }
@@ -71,7 +65,7 @@ void Scene::AddModel(const std::string &dir, const std::string &name)
         // Loop over faces and save to the scene
         size_t index_offset = 0;
         auto num_faces = shapes[s].mesh.num_face_vertices.size();
-        m_Primitives.reserve(m_Primitives.size() + num_faces);
+        primitives_.reserve(primitives_.size() + num_faces);
 
         for (size_t f = 0; f < num_faces; f++)
         {
@@ -85,16 +79,15 @@ void Scene::AddModel(const std::string &dir, const std::string &name)
             auto &material = mats[mid];
 
             // Create the face
-            auto &ptr = m_Primitives.emplace_back();
-            ptr = std::make_shared<Triangle>(material);
-            auto &tri = *std::static_pointer_cast<Triangle>(ptr);
+            primitives_.push_back( std::make_shared<Triangle>(material) );
+            auto &tri = *std::static_pointer_cast<Triangle>(primitives_.back());
 
             // Register an area light if there is one
             if (material->IsEmissive())
             {
                 auto light = std::make_shared<AreaLight>(tri, material->ke);
                 tri.SetAreaLight(light);
-                m_Lights.push_back(light);
+                lights.push_back(light);
             }
 
             // Save vertex information
@@ -120,7 +113,7 @@ void Scene::AddModel(const std::string &dir, const std::string &name)
     }
 }
 
-void Scene::ParseScene(const std::string &dir, const std::string &name)
+void Scene::parse(const std::string &dir, const std::string &name)
 {
     pugi::xml_document doc;
     auto xmlPath = dir + '/' + name + ".xml";
@@ -159,24 +152,23 @@ void Scene::ParseScene(const std::string &dir, const std::string &name)
         auto name = light.attribute("mtlname").as_string();
         auto rad = light.attribute("radiance").as_string();
         LOG_INFO("light material {} has radiance : {}", name, rad);
-        m_LightRadiance[name] = stringToVec(rad);
+        lightRadiance_[name] = stringToVec(rad);
     }
 
     auto camAttrs = doc.child("camera");
     auto width = camAttrs.child("width").attribute("value").as_int();
     auto height = camAttrs.child("height").attribute("value").as_int();
-    m_Camera = std::make_shared<Camera>(Size2i{width, height});
-    m_Camera->m_eye = stringToVec(camAttrs.child("eye").attribute("value").as_string());
-    m_Camera->m_lookat = stringToVec(camAttrs.child("lookat").attribute("value").as_string());
-    m_Camera->m_up = stringToVec(camAttrs.child("up").attribute("value").as_string());
-    m_Camera->m_fov = camAttrs.child("fovy").attribute("value").as_float();
+    camera = std::make_shared<Camera>(Size2i{ width, height });
+    camera->m_eye = stringToVec(camAttrs.child("eye").attribute("value").as_string());
+    camera->m_lookat = stringToVec(camAttrs.child("lookat").attribute("value").as_string());
+    camera->m_up = stringToVec(camAttrs.child("up").attribute("value").as_string());
+    camera->m_fov = camAttrs.child("fovy").attribute("value").as_float();
 
-    AddModel(dir, name);
-
-    LOG_INFO("Number of lights in the scene: {}", m_Lights.size());
+    add_model(dir, name);
+    LOG_INFO("Number of lights in the scene: {}", lights.size());
 }
 
-void Scene::BuildAggregate()
+void Scene::build_accel()
 {
-    m_Aggregate = std::make_shared<BVHAggregate>(m_Primitives);
+    accel = std::make_shared<BVHAccel>(primitives_);
 }

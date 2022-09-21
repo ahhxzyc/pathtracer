@@ -8,15 +8,12 @@ find_package(Qt5 REQUIRED COMPONENTS ${QT_COMPONENTS})
 set(CMAKE_AUTOMOC ON)
 
 # find source files
-file(GLOB_RECURSE SRC_FILES
-        ${CMAKE_SOURCE_DIR}/src/*.cpp
-        ${CMAKE_SOURCE_DIR}/include/*.h)
+file(GLOB_RECURSE SRC_FILES "src/*.cpp" "src/*.h" )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC_FILES})
 
 # create executable target
 add_executable(${TARGET_NAME} ${SRC_FILES} )
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_17)
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # add Qt dependency
 target_link_libraries(${TARGET_NAME} Qt5::Widgets Qt5::Core)

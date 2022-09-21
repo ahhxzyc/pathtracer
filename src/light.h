@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Types.h"
-#include "Ray.h"
+#include "common.h"
 
 class GeometricPrimitive;
 class Intersection;

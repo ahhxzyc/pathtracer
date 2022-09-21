@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Types.h"
-#include "Ray.h"
+#include "common.h"
 
 class Bound3f
 {
@@ -13,13 +12,10 @@ public:
     Bound3f Union(Point3f point) const;
 
     int MaxExtent() const;
-
-    //// return one of the 8 sub-boxes;
-    //Bound3f getSubBox(int idx) const;
     
     bool contain(Vec3f p);
 
-    bool ExistIntersection(const Ray &ray, float tmin, float tmax) const;
+    bool ExistIntersection(const Ray &ray) const;
     Point3f Center() const;
 
 public:

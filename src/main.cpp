@@ -1,9 +1,7 @@
-#include "Types.h"
-#include "Utils.h"
-#include "Scene.h"
-#include "Camera.h"
-#include "integrator/Path.h"
-#include "integrator/WhiteFurnace.h"
+#include "common.h"
+#include "scene.h"
+#include "camera.h"
+#include "integrator.h"
 #include "Log.h"
 
 #include <QApplication>
@@ -105,30 +103,26 @@ private:
 
 int main(int argc, char** argv)
 {
-    Log::Init();
     QApplication app(argc, argv);
+    Log::Init();
 
-    // Window title
     Window window;
     window.show();
 
-    // Construct scene
     Scene scene;
-    scene.ParseScene("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
+    scene.parse("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
     //scene.ParseScene("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
-    scene.BuildAggregate();
-
-    // Construct integrator
-    auto camera = scene.GetCamera();
-    auto integrator = std::make_shared<PathIntegrator>(camera);
+    scene.build_accel();
     
+    auto integrator = std::make_shared<PathIntegrator>();
+
     auto threadFunc = [&]()
     {
         for (int framei = 1; ; framei ++ )
         {
-            integrator->Render(scene);
-            auto size = camera->film->Size();
-            window.UpdateImage(camera->film->GetColorsUchar(), size.x, size.y, framei);
+            integrator->render(scene);
+            auto size = scene.camera->film->size;
+            window.UpdateImage(scene.camera->film->framebuffer_ub(), size.x, size.y, framei);
             if (framei - (framei & -framei) == 0)
                 window.Save();
         }

@@ -1,4 +1,4 @@
-#include "BSDF.h"
+#include "bsdf.h"
 
 static const auto s_LocalN = Vec3f(0,0,1);
 

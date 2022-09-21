@@ -1,8 +1,8 @@
-#include "Primitive.h"
-#include "Utils.h"
+#include "primitive.h"
+#include "common.h"
 #include "Bound3f.h"
 
-std::optional<Intersection> Triangle::Intersect(const Ray &ray, float tmin, float tmax) const
+std::optional<Intersection> Triangle::intersect(Ray &ray) const
 {
     Vec3f e1 = p[1] - p[0];
     Vec3f e2 = p[2] - p[0];
@@ -10,15 +10,15 @@ std::optional<Intersection> Triangle::Intersect(const Ray &ray, float tmin, floa
     float denominator = mixedProduct(-d, e1, e2);
     if (fabs(denominator) < 1e-10)
         return {};
-    Vec3f s = ray.orig - p[0];
+    Vec3f s = ray.origin - p[0];
     float t = mixedProduct(s, e1, e2) / denominator;
     float u = mixedProduct(-d, s, e2) / denominator;
     float v = mixedProduct(-d, e1, s) / denominator;
-    if (t > tmin && t < tmax && inside01(u) && inside01(v) && inside01(u + v))
+    if (t > ray.minT && t < ray.maxT && inside01(u) && inside01(v) && inside01(u + v))
     {
         Intersection is;
         is.t = t;
-        is.point = ray.orig + t * d;
+        is.point = ray.origin + t * d;
         is.normal = glm::normalize((1 - u - v) * n[0] + u * n[1] + v * n[2]);
         is.uv = (1-u-v) * uv[0] + u * uv[1] + v * uv[2];
         is.primitive = this;
@@ -69,7 +69,7 @@ Point3f Triangle::Center() const
     return (p[0] + p[1] + p[2]) / 3.f;
 }
 
-bool Triangle::ExistIntersection(const Ray &ray, float tmin, float tmax) const
+bool Triangle::has_intersection(const Ray &ray) const
 {
     Vec3f e1 = p[1] - p[0];
     Vec3f e2 = p[2] - p[0];
@@ -77,11 +77,11 @@ bool Triangle::ExistIntersection(const Ray &ray, float tmin, float tmax) const
     float denominator = mixedProduct(-d, e1, e2);
     if (fabs(denominator) < 1e-10)
         return {};
-    Vec3f s = ray.orig - p[0];
+    Vec3f s = ray.origin - p[0];
     float t = mixedProduct(s, e1, e2) / denominator;
     float u = mixedProduct(-d, s, e2) / denominator;
     float v = mixedProduct(-d, e1, s) / denominator;
-    return t > tmin && t < tmax && inside01(u) && inside01(v) && inside01(u + v);
+    return t > ray.minT && t < ray.maxT && inside01(u) && inside01(v) && inside01(u + v);
 }
 
 GeometricPrimitive::GeometricPrimitive(
@@ -100,18 +100,8 @@ void Intersection::BuildBSDF()
 
     // add bxdfs to the BSDF
     auto material = primitive->GetMaterial();
-    auto kd = material->kd_map->get(uv[0], uv[1]);
+    auto kd = material->kdMap->get(uv[0], uv[1]);
     auto ks = material->ks;
-
-    //auto sum = kd + ks;
-    //for (int i = 0; i < 3; i ++)
-    //{
-    //    if (sum[i] > 1.f)
-    //    {
-    //        kd /= sum[i];
-    //        ks /= sum[i];
-    //    }
-    //}
 
     bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
     if (glm::length(ks) > 0.01f)

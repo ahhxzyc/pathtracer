@@ -50,22 +50,6 @@ int Bound3f::MaxExtent() const
 }
 
 
-
-//Bound3f Bound3f::getSubBox(int idx) const {
-//    int x = idx & 1;
-//    int y = (idx & 2) >> 1;
-//    int z = (idx & 4) >> 2;
-//    float side_len = (m_max[0] - m_min[0]) * 0.5f;
-//    Vec3f base(m_min[0] + x * side_len,
-//                m_min[1] + y * side_len,
-//                m_min[2] + z * side_len);
-//    Vec3f temp(base[0] + side_len,
-//                base[1] + side_len,
-//                base[2] + side_len);
-//    return Bound3f(base, temp);
-//}
-
-
 bool Bound3f::contain(Vec3f p) {
     for (int i = 0; i < 3; i ++ )
         if (p[i] > m_max[i] || p[i] < m_min[i])
@@ -79,14 +63,15 @@ Point3f Bound3f::Center() const
     return (m_max + m_min) * 0.5f;
 }
 
-bool Bound3f::ExistIntersection(const Ray &ray, float tmin, float tmax) const
+bool Bound3f::ExistIntersection(const Ray &ray) const
 {
-    Vec3f v0 = (m_min - ray.orig) / ray.dir;
-    Vec3f v1 = (m_max - ray.orig) / ray.dir;
+    Vec3f v0 = (m_min - ray.origin) / ray.dir;
+    Vec3f v1 = (m_max - ray.origin) / ray.dir;
+    auto tmin = ray.minT, tmax = ray.maxT;
     for (int i = 0; i < 3; i ++)
     {
         if (v0[i] > v1[i]) std::swap(v0[i], v1[i]);
-        // Magic trick to reduce rounding error in pbrt 3ed 3.1.2 Ray¨CBounds Intersections
+        // Magic trick to reduce rounding error in pbrt 3ed 3.1.2 Rayï¿½CBounds Intersections
         v1[i] *= 1.001f;
         tmin = tmin < v0[i] ? v0[i] : tmin;
         tmax = tmax > v1[i] ? v1[i] : tmax;

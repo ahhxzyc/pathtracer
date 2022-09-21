@@ -1,6 +1,6 @@
-#include "Light.h"
-#include "Primitive.h"
-#include "Utils.h"
+#include "light.h"
+#include "primitive.h"
+#include "common.h"
 
 
 LightSample AreaLight::Sample(const Point3f &shadingPoint) const
@@ -19,7 +19,7 @@ float AreaLight::Pdf(const Intersection &is, const Vec3f &wi) const
 {
     Ray ray(is.point, wi);
     float ret = 0.f;
-    auto lightIs = m_Primitive.Intersect(ray, 0.001f, std::numeric_limits<float>::max());
+    auto lightIs = m_Primitive.intersect(ray);
     if (lightIs && !lightIs->backface)
     {
         auto d2 = glm::length2(lightIs->point - is.point);
