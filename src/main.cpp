@@ -114,8 +114,8 @@ int main(int argc, char** argv)
 
     // Construct scene
     Scene scene;
-    //scene.ParseScene("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
-    scene.ParseScene("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
+    scene.ParseScene("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
+    //scene.ParseScene("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
     scene.BuildAggregate();
 
     // Construct integrator

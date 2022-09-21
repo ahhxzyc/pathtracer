@@ -4,7 +4,8 @@ static const auto s_LocalN = Vec3f(0,0,1);
 
 Color3f LambertianDiffuse::Eval(const Vec3f &wi) const
 {
-    return reflectance_ / PI;
+    auto NoL = glm::dot(s_LocalN, wi);
+    return NoL > 0.f ? reflectance_ / PI : Color3f(0);
 }
 
 BxDFSample LambertianDiffuse::Sample() const
@@ -24,7 +25,7 @@ BxDFSample LambertianDiffuse::Sample() const
 float LambertianDiffuse::Pdf(const Vec3f &wi) const
 {
     auto NoL = glm::dot(s_LocalN, wi);
-    return NoL / PI;
+    return NoL > 0.f ? NoL / PI : 0.f;
 }
 
 Color3f BlinnPhongSpecular::Eval(const Vec3f &wi) const
@@ -54,7 +55,7 @@ BxDFSample BlinnPhongSpecular::Sample() const
 float BlinnPhongSpecular::Pdf(const Vec3f &wi) const
 {
     auto H = glm::normalize(wi + m_Wo);
-    auto NoH = glm::dot(H, s_LocalN);
+    auto NoH = abs_dot(H, s_LocalN);
     return (m_Shininess + 1) / (2 * PI) * std::pow(NoH, m_Shininess);
 }
 

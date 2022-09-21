@@ -97,7 +97,7 @@ Color3f OneLightIntegralEstimator(const Scene &scene, Intersection &is, const Ve
         auto lightPdf = light.Pdf(is, sample.wi);
         Ray ray(is.point, sample.wi);
         auto lightIs = scene.GetAggregate().Intersect(ray, 0.001f, std::numeric_limits<float>::max());
-        if (lightIs && lightIs->primitive->GetAreaLight() == &light)
+        if (lightIs && !lightIs->backface && lightIs->primitive->GetAreaLight() == &light)
         {
             auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);
             auto weight = BalanceHeuristic(sample.pdf, lightPdf);
@@ -151,7 +151,7 @@ Color3f LightIntegralEstimator(const Scene &scene, Intersection &is, const Vec3f
         auto sample = is.bsdf.Sample();
         Ray ray(is.point, sample.wi);
         auto lightIs = scene.GetAggregate().Intersect(ray, 0.001f, std::numeric_limits<float>::max());
-        if (lightIs && lightIs->primitive->GetAreaLight())
+        if (lightIs && !lightIs->backface && lightIs->primitive->GetAreaLight())
         {
             auto &light = *lightIs->primitive->GetAreaLight();
             auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);

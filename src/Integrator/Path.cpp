@@ -36,8 +36,22 @@ Color3f PathIntegrator::Li(const Ray &ray, const Scene &scene, int depth /*= 0*/
             L += mat->ke;
         }
 
-        // direct lighting integral
-        L += beta * RandomLightIntegralEstimator(scene, *is, -ray.dir);
+        //// direct lighting integral
+        //L += beta * RandomLightIntegralEstimator(scene, *is, -ray.dir);
+
+        // Sample direct lighting
+        //for (auto &light : scene.m_Lights)
+        //{
+        //    //auto sample = light->Sample(is->point);
+        //    //float tmax = glm::length(sample.point - is->point) - 0.0001f;
+        //    //if (!scene.GetAggregate().ExistIntersection({ is->point, sample.wi }, 0.001f, tmax))
+        //    //{
+        //    //    auto lightBeta = is->bsdf.Eval(sample.wi) * abs_dot(is->normal, sample.wi, 0.f);
+        //    //    L += beta * lightBeta * sample.Le / sample.pdf;
+        //    //}
+        //    L += beta * OneLightIntegralEstimator(scene, *is, -ray.dir, *light);
+        //}
+        L += beta * LightIntegralEstimator(scene, *is, -ray.dir);
 
         // Sample for direction of next ray, accumulate path throughput
         auto sample = is->bsdf.Sample();
