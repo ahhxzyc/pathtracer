@@ -111,10 +111,11 @@ int main(int argc, char** argv)
 
     Scene scene;
     scene.parse("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
-    //scene.ParseScene("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
+    //scene.parse("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
     scene.build_accel();
     
     auto integrator = std::make_shared<PathIntegrator>();
+    //auto integrator = std::make_shared<WhiteFurnaceIntegrator>(Color3f(0.4));
 
     auto threadFunc = [&]()
     {

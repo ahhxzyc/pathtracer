@@ -33,7 +33,7 @@ std::optional<Intersection> Triangle::intersect(Ray &ray) const
     return {};
 }
 
-PrimitiveSample Triangle::Sample() const
+PrimitiveSample Triangle::sample() const
 {
     // uniform sampling inside the triangle
     // ref: https://jsfiddle.net/jniac/fmx8bz9y/
@@ -45,11 +45,11 @@ PrimitiveSample Triangle::Sample() const
     }
     auto P = (1 - u - v) * p[0] + u * p[1] + v * p[2];
     auto N = glm::normalize((1 - u - v) * n[0] + u * n[1] + v * n[2]);
-    return { P, N, 1.f / Area() };
+    return { P, N, 1.f / area() };
 
 }
 
-float Triangle::Area() const
+float Triangle::area() const
 {
     Vec3f e1 = p[1] - p[0];
     Vec3f e2 = p[2] - p[0];
@@ -102,11 +102,13 @@ void Intersection::BuildBSDF()
     auto material = primitive->GetMaterial();
     auto kd = material->kdMap->get(uv[0], uv[1]);
     auto ks = material->ks;
+    auto ns = material->shininess;
 
     bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
     if (glm::length(ks) > 0.01f)
     {
-        bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, material->shininess, localWo));
+        bsdf.bxdfs.push_back(std::make_shared<PhongSpecular>(ks, ns, localWo));
     }
-
+    bsdf.unify_reflectance();
+    bsdf.generate_sampling_weights();
 }

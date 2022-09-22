@@ -17,9 +17,9 @@ float clamp(float a, float b, float f) {
 
 
 float rand01() {
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_real_distribution<> distrib(0, 1);
+    static std::random_device rd;
+    static std::mt19937 generator(rd());
+    static std::uniform_real_distribution<> distrib(0, 1);
     return distrib(generator);
     //return (float) (rand() % 1000) / 1000.f;
 }

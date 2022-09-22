@@ -48,8 +48,8 @@ public:
     const Material*     GetMaterial() const { return m_Material.get(); }
     const AreaLight*    GetAreaLight() const { return m_AreaLight.get(); }
     void                SetAreaLight(const std::shared_ptr<AreaLight>& light) {m_AreaLight = light;}
-    virtual PrimitiveSample Sample() const = 0;
-    virtual float           Area() const = 0;
+    virtual PrimitiveSample sample() const = 0;
+    virtual float           area() const = 0;
 protected:
     std::shared_ptr<Material> m_Material;
     std::shared_ptr<AreaLight> m_AreaLight;
@@ -62,10 +62,10 @@ public:
         GeometricPrimitive(material) {}
     virtual std::optional<Intersection> intersect(Ray &ray) const override;
     virtual bool has_intersection(const Ray &ray) const override;
-    virtual PrimitiveSample             Sample() const override;
+    virtual PrimitiveSample             sample() const override;
     virtual Bound3f BoundingBox() const override;
     virtual Point3f Center() const override;
-    virtual float Area() const override;
+    virtual float area() const override;
 public:
     Vec3f p[3];
     Vec3f n[3];

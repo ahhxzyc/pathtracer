@@ -23,13 +23,13 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
     Color3f L = Color3f(0.f);
 
     Color3f beta(1.f);
-    auto currentRay = ray;
+    auto is = scene.accel->intersect(Ray(ray));
     for (int bounces = 0; ; bounces ++ )
     {
-        auto is = scene.accel->intersect(currentRay);
         if (!is || is->backface)
             break;
         is->BuildBSDF();
+        auto &bsdf = is->bsdf;
 
         // direct path from eye to light
         auto mat = is->primitive->GetMaterial();
@@ -38,13 +38,47 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
             L += mat->ke;
         }
 
-        // estimate direct lighting
-        L += beta * estimate_direct_group_stochastic(scene, *is, -ray.dir);
+        // sample from lights
+        {
+            // uniformly choose a light
+            auto u = rand01();
+            int n = scene.lights.size();
+            auto index = std::min(static_cast<int>(u * n), n - 1);
+            auto invPdf = static_cast<float>(n);
+            auto &light = *scene.lights[index];
 
-        // Sample for direction of next ray, accumulate path throughput
-        auto sample = is->bsdf.Sample();
-        currentRay = Ray(is->point, sample.wi);
-        beta *= is->bsdf.Eval(sample.wi) * abs_dot(is->normal, sample.wi) / sample.pdf;
+            // sample the light
+            auto sample = light.Sample(*is);
+            if (sample.pdf != 0.f && !scene.accel->has_intersection(Ray::between(is->point, sample.point)))
+            {
+                auto currentBeta = bsdf.Eval(sample.wi) * glm::dot(is->normal, sample.wi) / sample.pdf * invPdf;
+                auto weight = power_heuristic(sample.pdf, bsdf.Pdf(sample.wi));
+                L += beta * currentBeta * sample.Le * weight ;
+            }
+        }
+
+        // sample BSDF
+        auto scatterSample = bsdf.Sample();
+        if (scatterSample.pdf == 0.f)
+            break;
+        Ray ray(is->point, scatterSample.wi);
+        auto nextIsec = scene.accel->intersect(ray);
+        if (!nextIsec || nextIsec->backface)
+            break;
+
+        // accumulate path throughput
+        beta *= bsdf.Eval(scatterSample.wi) * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
+
+        // sample contribution
+        auto light = nextIsec->primitive->GetAreaLight();
+        if (light)
+        {
+            auto lightPdf = light->Pdf(is->point, nextIsec->point, nextIsec->normal) / float(scene.lights.size());
+            auto weight = power_heuristic(scatterSample.pdf, lightPdf);
+            L += beta * light->Radiance(ray) * weight;
+        }
+
+        is = nextIsec;
 
         // Russian roulette
         if (bounces > 3)
@@ -56,128 +90,53 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
         }
     }
 
-    return L;
-}
-
-
-Color3f estimate_direct_all(const Scene& scene, Intersection &is, const Vec3f& wo)
-{
-    Color3f L(0.f);
-    for (auto &light : scene.lights)
+    if (std::isnan(L.x) || std::isnan(L.y) || std::isnan(L.z))
     {
-        L += estimate_direct_single(scene, is, wo, *light);
-    }
-    return L;
-}
-
-Color3f estimate_direct_stochastic(const Scene &scene, Intersection &is, const Vec3f& wo)
-{
-    auto u = rand01();
-    int n = scene.lights.size();
-    auto index = std::min(static_cast<int>(u * n), n - 1);
-    auto invPdf = static_cast<float>(n);
-    return estimate_direct_single(scene, is, wo, *scene.lights[index]) * invPdf;
-}
-
-Color3f estimate_direct_single(const Scene &scene, Intersection &is, const Vec3f &wo, const Light& light)
-{
-    Color3f L(0.f);
-    
-    float lightWeight = 0.f;
-    float bsdfWeight = 0.f;
-
-    // sample light
-    {
-        auto sample = light.Sample(is.point);
-        float tmax = glm::length(sample.point - is.point) - 0.0001f;
-        if (!scene.accel->has_intersection({ is.point, sample.wi }))
-        {
-            auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);
-            auto weight = balance_heuristic(sample.pdf, is.bsdf.Pdf(sample.wi));
-            //auto weight = 1.f;
-            L += transport * sample.Le * weight / sample.pdf;
-
-            lightWeight = weight;
-        }
-    }
-
-    // sample BSDF
-    {
-        auto sample = is.bsdf.Sample();
-        auto lightPdf = light.Pdf(is, sample.wi);
-        Ray ray(is.point, sample.wi);
-        auto lightIs = scene.accel->intersect(ray);
-        if (lightIs && !lightIs->backface && lightIs->primitive->GetAreaLight() == &light)
-        {
-            auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);
-            auto weight = balance_heuristic(sample.pdf, lightPdf);
-            L += transport * light.Radiance(ray) * weight / sample.pdf;
-
-            bsdfWeight = weight;
-        }
-    }
-
-    //auto sum = lightWeight + bsdfWeight;
-    //if (sum > 0.001f)
-    //{
-    //    L = Color3f(1,0,0) + lightWeight/sum*Color3f(-1,1,0);
-    //}
-
-    return L;
-}
-
-Color3f estimate_direct_group_stochastic(const Scene &scene, Intersection &is, const Vec3f &wo)
-{
-    Color3f L(0.f);
-
-    float lightWeight = 0.f;
-    float bsdfWeight = 0.f;
-
-    // sample from lights
-    {
-        // uniformly choose a light
-        auto u = rand01();
-        int n = scene.lights.size();
-        auto index = std::min(static_cast<int>(u * n), n - 1);
-        auto invPdf = static_cast<float>(n);
-        auto &light = *scene.lights[index];
-
-        // sample the light
-        auto sample = light.Sample(is.point);
-        float tmax = glm::length(sample.point - is.point) - 0.0001f;
-        if (!scene.accel->has_intersection(Ray::between(is.point, sample.point)))
-        {
-            auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);
-            auto weight = balance_heuristic(sample.pdf, is.bsdf.Pdf(sample.wi));
-            L += transport * sample.Le * weight / sample.pdf * invPdf;
-
-            lightWeight = weight;
-        }
-    }
-
-    // sample BSDF
-    {
-        // shoot a ray into the scene
-        auto sample = is.bsdf.Sample();
-        Ray ray(is.point, sample.wi);
-        auto lightIs = scene.accel->intersect(ray);
-        if (lightIs && !lightIs->backface && lightIs->primitive->GetAreaLight())
-        {
-            auto &light = *lightIs->primitive->GetAreaLight();
-            auto transport = is.bsdf.Eval(sample.wi) * abs_dot(is.normal, sample.wi);
-            auto lightPdf = light.Pdf(is, sample.wi);
-            auto weight = balance_heuristic(sample.pdf, lightPdf);
-            L += transport * light.Radiance(ray) * weight / sample.pdf;
-
-            bsdfWeight = weight;
-        }
+        LOG_INFO("nan");
     }
 
     return L;
 }
+
 
 float balance_heuristic(float pdf1, float pdf2)
 {
     auto sum = pdf1 + pdf2;
-    return sum > 0.001f ? pdf1 / sum : 0.f;
+    return sum == 0.f ? 0.f : pdf1 / sum;
+}
+
+float power_heuristic(float pdf1, float pdf2)
+{
+    auto sum = pdf1*pdf1 + pdf2*pdf2;
+    return sum == 0.f ? 0.f : pdf1 * pdf1 / sum;
+}
+
+WhiteFurnaceIntegrator::WhiteFurnaceIntegrator(const Color3f &rad)
+    : incidentRadiance_(rad)
+{
+
+}
+
+Color3f WhiteFurnaceIntegrator::radiance(const Ray &ray, const Scene &scene, int depth /*= 0*/)
+{
+    Color3f L = incidentRadiance_;
+
+    auto is = scene.accel->intersect(Ray(ray));
+    if (!is || is->backface)
+        return L;
+
+    is->BuildBSDF();
+    auto &bsdf = is->bsdf;
+
+    // sample bsdf
+    auto sample = bsdf.Sample();
+    if (sample.pdf == 0.f)
+        return L;
+
+    // direct lighting
+    float cosTheta = glm::dot(is->normal, sample.wi);
+    auto f = bsdf.Eval(sample.wi);
+    L = f * incidentRadiance_ * cosTheta / sample.pdf;
+
+    return L;
 }

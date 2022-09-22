@@ -32,7 +32,7 @@ struct Ray
     static Ray between(const Point3f &a, const Point3f &b)
     {
         auto time = glm::length(b - a);
-        Ray ray(a, (b - a) / time);
+        Ray ray(a, b - a);
         ray.maxT = time - 0.0001f;
         return ray;
     }

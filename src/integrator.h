@@ -21,10 +21,15 @@ public:
     virtual Color3f radiance(const Ray& ray, const Scene &scene, int depth = 0) override;
 };
 
-
-Color3f estimate_direct_all       (const Scene& scene, Intersection &is, const Vec3f& wo);
-Color3f estimate_direct_stochastic(const Scene &scene, Intersection &is, const Vec3f& wo);
-Color3f estimate_direct_single    (const Scene &scene, Intersection &is, const Vec3f &wo, const Light& light);
-Color3f estimate_direct_group_stochastic(const Scene &scene, Intersection &is, const Vec3f &wo);
+class WhiteFurnaceIntegrator : public Integrator
+{
+public:
+    WhiteFurnaceIntegrator(const Color3f &rad);
+    virtual ~WhiteFurnaceIntegrator() = default;
+    virtual Color3f radiance(const Ray &ray, const Scene &scene, int depth = 0) override;
+private:
+    Color3f incidentRadiance_;
+};
 
 float balance_heuristic(float pdf1, float pdf2);
+float power_heuristic(float pdf1, float pdf2);

@@ -3,37 +3,45 @@
 #include "common.h"
 
 
-LightSample AreaLight::Sample(const Point3f &shadingPoint) const
+LightSample AreaLight::Sample(const Intersection &ref) const
 {
-    auto sample = m_Primitive.Sample();
-    auto wi = sample.point - shadingPoint;
+    // sample underlying primitive
+    auto sample = primitive_.sample();
+    auto wi = sample.point - ref.point;
     auto d2 = glm::length2(wi);
     wi = glm::normalize(wi);
 
-    // pdf is transformed to be on solid angle
-    auto pdf = sample.pdf * d2 / abs_dot(sample.normal, -wi, 0.0001f);
-    return { sample.point, wi, m_Radiance, pdf};
+    // is sample in both upper hemispheres ? 
+    auto refCosine = glm::dot(ref.normal, wi);
+    auto sampleCosine = glm::dot(sample.normal, -wi);
+    float pdf = 0.f;
+    if (refCosine > 0.f && sampleCosine > 0.f)
+    {
+        pdf = Pdf(ref.point, sample.point, sample.normal);
+    }
+
+    LightSample ret;
+    ret.point   = sample.point;
+    ret.Le      = radiance_;
+    ret.wi      = wi;
+    ret.pdf     = pdf;
+    return ret;
 }
 
-float AreaLight::Pdf(const Intersection &is, const Vec3f &wi) const
+float AreaLight::Pdf(const Point3f &refPoint, const Vec3f &lightPoint, const Vec3f &lightNormal) const
 {
-    Ray ray(is.point, wi);
-    float ret = 0.f;
-    auto lightIs = m_Primitive.intersect(ray);
-    if (lightIs && !lightIs->backface)
-    {
-        auto d2 = glm::length2(lightIs->point - is.point);
-        ret = d2 / abs_dot(lightIs->normal, -wi, 0.0001f) / m_Primitive.Area();
-    }
-    return ret;
+    auto d = refPoint - lightPoint;
+    auto dist2 = glm::length2(d);
+    auto cosine = glm::dot(glm::normalize(d), lightNormal);
+    return dist2 / cosine / primitive_.area();
 }
 
 Color3f AreaLight::Radiance(const Ray &ray) const
 {
-    return m_Radiance;
+    return radiance_;
 }
 
 Point3f AreaLight::Center() const
 {
-    return m_Primitive.Center();
+    return primitive_.Center();
 }

@@ -12,7 +12,6 @@
 // BSDF: world space
 struct BxDFSample
 {
-    //Color3f transport;
     float pdf;
     Vec3f wi;
     static BxDFSample Null()
@@ -27,12 +26,13 @@ struct BxDFSample
 class BxDF
 {
 public:
-    BxDF(const Color3f &r) : reflectance_(r) {}
+    BxDF(const Color3f &r) : reflectance(r) {}
     virtual Color3f Eval(const Vec3f &wi) const = 0;
     virtual BxDFSample Sample() const = 0;
     virtual float Pdf(const Vec3f &wi) const = 0;
 public:
-    Color3f reflectance_;
+    Color3f reflectance;
+    float samplingWeight;
 };
 
 class LambertianDiffuse : public BxDF
@@ -42,6 +42,21 @@ public:
     virtual Color3f Eval(const Vec3f &wi) const override;
     virtual BxDFSample Sample() const override;
     virtual float Pdf(const Vec3f &wi) const override;
+};
+
+class PhongSpecular : public BxDF
+{
+public:
+    PhongSpecular(const Color3f &r, float ns, const Vec3f &wo)
+        : BxDF(r), exponent_(ns), wo_(wo)
+    {
+    }
+    virtual Color3f Eval(const Vec3f &wi) const override;
+    virtual BxDFSample Sample() const override;
+    virtual float Pdf(const Vec3f &wi) const override;
+private:
+    float exponent_;
+    Vec3f wo_;
 };
 
 class BlinnPhongSpecular : public BxDF
@@ -65,6 +80,7 @@ public:
     BxDFSample Sample() const;
     float Pdf(const Vec3f &wiW) const;
 
+    void generate_sampling_weights();
     void unify_reflectance();
     std::vector<std::shared_ptr<BxDF>> bxdfs;
     CoordinateSystem onb;
