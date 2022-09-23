@@ -1,4 +1,4 @@
-# My Offline Render
+# My Offline Renderer
 
 ## Gallery
 
