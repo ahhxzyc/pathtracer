@@ -2,7 +2,9 @@
 
 ## Gallery
 
-[Veach Scene](gallery/veach.png)
+<img src="gallery/cornell.png" alt="Cornell Box with Table and Chairs" style="zoom:67%;" />
 
-[Cornell Box with Table and Chairs](gallery/cornell.png)
+<img src="gallery/veach.png" alt="Veach Scene" style="zoom:67%;" />
+
+
 
