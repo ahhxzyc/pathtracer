@@ -30,9 +30,15 @@ float LambertianDiffuse::Pdf(const Vec3f &wi) const
 
 Color3f BlinnPhongSpecular::Eval(const Vec3f &wi) const
 {
-    auto H = glm::normalize(wi + m_Wo);
+    float NoV = glm::dot(wo_, s_LocalN);
+    float NoL = glm::dot(wi, s_LocalN);
+    if (NoV < 0.f || NoL < 0.f)
+        return Color3f(0);
+    auto H = glm::normalize(wi + wo_);
     auto NoH = abs_dot(H, s_LocalN);
-    return reflectance * (m_Shininess + 2) / (2.f * PI) * std::pow(NoH, m_Shininess);
+    //float normFactor = (exponent_ + 2) * (exponent_ + 4) / (8.f * PI * (std::pow(2, -exponent_/2.f) + exponent_));
+    float normFactor = (exponent_ + 2) / (2.f * PI);
+    return reflectance * normFactor * std::pow(NoH, exponent_);
 }
 
 BxDFSample BlinnPhongSpecular::Sample() const
@@ -40,23 +46,33 @@ BxDFSample BlinnPhongSpecular::Sample() const
     // random halfway vector
     auto u = rand01(), v = rand01();
     auto phi = 2 * PI * u;
-    auto cosTheta = std::pow(v, 1.f / (m_Shininess + 1));
+    auto cosTheta = std::pow(v, 1.f / (exponent_ + 1));
     auto sinTheta = std::sqrt(1.f - cosTheta * cosTheta);
     Vec3f H(
         sinTheta * cos(phi),
         sinTheta * sin(phi),
         cosTheta
     );
-    auto wi = -m_Wo + H * 2.f * glm::dot(m_Wo, H);
-    auto pdf = (m_Shininess + 1) / (2.f * PI) * std::pow(cosTheta, m_Shininess);
+    auto wi = -wo_ + H * 2.f * glm::dot(wo_, H);
+    if (glm::dot(wi, s_LocalN) < 0.f)
+    {
+        return { 0.f, Vec3f(0.f) };
+    }
+    // TODO: pdf normalization
+    auto pdf = (exponent_ + 1) / (2.f * PI) * std::pow(cosTheta, exponent_);
     return {pdf, wi};
 }
 
 float BlinnPhongSpecular::Pdf(const Vec3f &wi) const
 {
-    auto H = glm::normalize(wi + m_Wo);
+    float NoV = glm::dot(wo_, s_LocalN);
+    float NoL = glm::dot(wi, s_LocalN);
+    if (NoV < 0.f || NoL < 0.f)
+        return 0.f;
+    auto H = glm::normalize(wi + wo_);
     auto NoH = abs_dot(H, s_LocalN);
-    return (m_Shininess + 1) / (2.f * PI) * std::pow(NoH, m_Shininess);
+    // TODO: pdf normalization
+    return (exponent_ + 1) / (2.f * PI) * std::pow(NoH, exponent_);
 }
 
 Color3f BSDF::Eval(const Vec3f &wiW) const

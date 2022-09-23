@@ -63,13 +63,13 @@ class BlinnPhongSpecular : public BxDF
 {
 public:
     BlinnPhongSpecular(const Color3f &r, float ns, const Vec3f &wo)
-        : BxDF(r), m_Shininess(ns), m_Wo(wo) { }
+        : BxDF(r), exponent_(ns), wo_(wo) { }
     virtual Color3f Eval(const Vec3f &wi) const override;
     virtual BxDFSample Sample() const override;
     virtual float Pdf(const Vec3f &wi) const override;
 private:
-    float m_Shininess;
-    Vec3f m_Wo;
+    float exponent_;
+    Vec3f wo_;
 };
 
 

@@ -107,7 +107,7 @@ void Intersection::BuildBSDF()
     bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
     if (glm::length(ks) > 0.01f)
     {
-        bsdf.bxdfs.push_back(std::make_shared<PhongSpecular>(ks, ns, localWo));
+        bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
     }
     bsdf.unify_reflectance();
     bsdf.generate_sampling_weights();
