@@ -118,14 +118,15 @@ BxDFSample BSDF::Sample() const
     auto sample = bxdfs[index]->Sample();
     
     // accumulate value and pdf
+    sample.pdf *= bxdfs[index]->samplingWeight;
     for (int i = 0; i < bxdfs.size(); i ++)
     {
         if (index == i)
             continue;
         sample.f += bxdfs[i]->Eval(sample.wi);
+        sample.pdf += bxdfs[i]->Pdf(sample.wi) * bxdfs[i]->samplingWeight;
     }
     sample.wi = onb.ToWorld(sample.wi);
-    sample.pdf = Pdf(sample.wi);
     return sample;
 
     //int n = bxdfs.size();
