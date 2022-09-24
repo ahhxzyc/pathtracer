@@ -109,6 +109,5 @@ void Intersection::BuildBSDF()
     {
         bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
     }
-    bsdf.unify_reflectance();
-    bsdf.generate_sampling_weights();
+    bsdf.init();
 }

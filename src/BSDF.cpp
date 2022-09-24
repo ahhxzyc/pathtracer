@@ -155,40 +155,42 @@ void BSDF::generate_sampling_weights()
         return r.x * 0.212671f + r.y * 0.715160f + r.z * 0.072169f;
     };
     std::vector<float> lums(bxdfs.size());
-    float luminanceSum = 0.f;
+    float sum = 0.f;
     for (int i = 0; i < bxdfs.size(); i ++)
     {
         lums[i] = luminance(bxdfs[i]->reflectance);
-        luminanceSum += lums[i];
+        sum += lums[i];
     }
 
-    if (luminanceSum == 0)
+    if (sum == 0)
         return;
-    float inverseLumSum = 1.f / luminanceSum;
+    float inverseLumSum = 1.f / sum;
     for (int i = 0; i < bxdfs.size(); i ++)
     {
         bxdfs[i]->samplingWeight = lums[i] * inverseLumSum;
     }
 }
 
-void BSDF::unify_reflectance()
+void BSDF::ensure_conservation()
 {
-    //for (auto bxdf : bxdfs)
-    //{
-    //    bxdf->reflectance = Color3f(1, 1, 1);
-    //}
-    Color3f reflectanceSum(0.f);
+    Color3f sum(0.f);
     for (auto bxdf : bxdfs)
     {
-        reflectanceSum += bxdf->reflectance;
+        sum += bxdf->reflectance;
     }
-    float maxComponent = std::max(reflectanceSum.x, std::max(reflectanceSum.y, reflectanceSum.z));
+    float maxComponent = std::max(sum.x, std::max(sum.y, sum.z));
     if (maxComponent < 1.f)
         return;
     for (auto bxdf : bxdfs)
     {
         bxdf->reflectance /= maxComponent;
     }
+}
+
+void BSDF::init()
+{
+    ensure_conservation();
+    generate_sampling_weights();
 }
 
 Color3f PhongSpecular::Eval(const Vec3f &wi) const

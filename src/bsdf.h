@@ -78,7 +78,8 @@ public:
     float Pdf(const Vec3f &wiW) const;
 
     void generate_sampling_weights();
-    void unify_reflectance();
+    void ensure_conservation();
+    void init();
     std::vector<std::shared_ptr<BxDF>> bxdfs;
     CoordinateSystem onb;
 };
