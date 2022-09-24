@@ -1,10 +1,21 @@
 #include "bsdf.h"
 
-static const auto s_LocalN = Vec3f(0,0,1);
+float localCos(const Vec3f &v)
+{
+    return v.z;
+}
+Vec3f localReflect(const Vec3f &v)
+{
+    return Vec3f(-v.x, -v.y, v.z);
+}
+Vec3f reflect(const Vec3f &v, const Vec3f &normal)
+{
+    return -v + normal * 2.f * glm::dot(normal, v);
+}
 
 Color3f LambertianDiffuse::Eval(const Vec3f &wi) const
 {
-    auto NoL = glm::dot(s_LocalN, wi);
+    auto NoL = localCos(wi);
     return NoL > 0.f ? reflectance / PI : Color3f(0);
 }
 
@@ -24,18 +35,18 @@ BxDFSample LambertianDiffuse::Sample() const
 
 float LambertianDiffuse::Pdf(const Vec3f &wi) const
 {
-    auto NoL = glm::dot(s_LocalN, wi);
+    auto NoL = localCos(wi);
     return NoL > 0.f ? NoL / PI : 0.f;
 }
 
 Color3f BlinnPhongSpecular::Eval(const Vec3f &wi) const
 {
-    float NoV = glm::dot(wo_, s_LocalN);
-    float NoL = glm::dot(wi, s_LocalN);
+    float NoV = localCos(wo_);
+    float NoL = localCos(wi);
     if (NoV < 0.f || NoL < 0.f)
         return Color3f(0);
     auto H = glm::normalize(wi + wo_);
-    auto NoH = abs_dot(H, s_LocalN);
+    auto NoH = localCos(H);
     //float normFactor = (exponent_ + 2) * (exponent_ + 4) / (8.f * PI * (std::pow(2, -exponent_/2.f) + exponent_));
     float normFactor = (exponent_ + 2) / (2.f * PI);
     return reflectance * normFactor * std::pow(NoH, exponent_);
@@ -53,8 +64,8 @@ BxDFSample BlinnPhongSpecular::Sample() const
         sinTheta * sin(phi),
         cosTheta
     );
-    auto wi = -wo_ + H * 2.f * glm::dot(wo_, H);
-    if (glm::dot(wi, s_LocalN) < 0.f)
+    auto wi = reflect(wo_, H);
+    if (localCos(wi) < 0.f)
     {
         return { 0.f, Vec3f(0.f) };
     }
@@ -65,12 +76,12 @@ BxDFSample BlinnPhongSpecular::Sample() const
 
 float BlinnPhongSpecular::Pdf(const Vec3f &wi) const
 {
-    float NoV = glm::dot(wo_, s_LocalN);
-    float NoL = glm::dot(wi, s_LocalN);
+    float NoV = localCos(wo_);
+    float NoL = localCos(wi);
     if (NoV < 0.f || NoL < 0.f)
         return 0.f;
     auto H = glm::normalize(wi + wo_);
-    auto NoH = abs_dot(H, s_LocalN);
+    auto NoH = localCos(H);
     // TODO: pdf normalization
     return (exponent_ + 1) / (2.f * PI) * std::pow(NoH, exponent_);
 }
@@ -174,11 +185,11 @@ void BSDF::unify_reflectance()
 
 Color3f PhongSpecular::Eval(const Vec3f &wi) const
 {
-    float NoV = glm::dot(wo_, s_LocalN);
-    float NoL = glm::dot(wi, s_LocalN);
+    float NoV = localCos(wo_);
+    float NoL = localCos(wi);
     if (NoV < 0.f || NoL < 0.f)
         return Color3f(0);
-    auto R = -wo_ + s_LocalN * 2.f * NoV;
+    auto R = localReflect(wo_);
     auto LoR = abs_dot(wi, R);
     return reflectance * (exponent_ + 2) / (2.f * PI) * std::pow(LoR, exponent_);
 }
@@ -196,9 +207,9 @@ BxDFSample PhongSpecular::Sample() const
         cosTheta
     );
     // transform to normal local space
-    auto reflectDir = -wo_ + s_LocalN * 2.f * glm::dot(wo_, s_LocalN);
-    auto wi = CoordinateSystem(reflectDir).ToWorld(vec);
-    if (glm::dot(wi, s_LocalN) < 0.f)
+    auto R = localReflect(wo_);
+    auto wi = CoordinateSystem(R).ToWorld(vec);
+    if (localCos(wi) < 0.f)
     {
         return {0.f, Vec3f(0.f)};
     }
@@ -208,11 +219,11 @@ BxDFSample PhongSpecular::Sample() const
 
 float PhongSpecular::Pdf(const Vec3f &wi) const
 {
-    float NoV = glm::dot(wo_, s_LocalN);
-    float NoL = glm::dot(wi, s_LocalN);
+    float NoV = localCos(wo_);
+    float NoL = localCos(wi);
     if (NoV < 0.f || NoL < 0.f)
         return 0.f;
-    auto R = -wo_ + s_LocalN * 2.f * NoV;
+    auto R = localReflect(wo_);
     auto LoR = abs_dot(wi, R);
     return (exponent_ + 1) / (2 * PI) * std::pow(LoR, exponent_);
 }

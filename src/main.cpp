@@ -110,9 +110,9 @@ int main(int argc, char** argv)
     window.show();
 
     Scene scene;
-    //scene.parse("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
+    scene.parse("E:/vscodedev/ptracer/res/veach-mis", "veach-mis");
     //scene.parse("E:/vscodedev/ptracer/res/cornell-box", "cornell-box");
-    scene.parse("E:/vscodedev/ptracer/res/bedroom", "bedroom");
+    //scene.parse("E:/vscodedev/ptracer/res/bedroom", "bedroom");
     scene.build_accel();
     
     auto integrator = std::make_shared<PathIntegrator>();
