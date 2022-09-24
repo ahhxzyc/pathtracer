@@ -1,5 +1,7 @@
 #include "bsdf.h"
 
+static BxDFSample sNullSample = {Color3f(0), 0, Vec3f(0)};
+
 float localCos(const Vec3f &v)
 {
     return v.z;
@@ -24,13 +26,11 @@ BxDFSample LambertianDiffuse::Sample() const
     // cosine hemisphere sampling
     float phi = rand01() * 2 * PI;
     float theta = 0.5f * acos(1 - 2 * rand01());
-    Vec3f v(
-        sin(theta) * cos(phi),
-        sin(theta) * sin(phi),
-        cos(theta)
-    );
+    Vec3f v( sin(theta) * cos(phi),
+             sin(theta) * sin(phi),
+             cos(theta));
     auto pdf = std::abs(v[2]) / PI;
-    return { pdf, v };
+    return { Eval(v), pdf, v };
 }
 
 float LambertianDiffuse::Pdf(const Vec3f &wi) const
@@ -67,11 +67,11 @@ BxDFSample BlinnPhongSpecular::Sample() const
     auto wi = reflect(wo_, H);
     if (localCos(wi) < 0.f)
     {
-        return { 0.f, Vec3f(0.f) };
+        return sNullSample;
     }
     // TODO: pdf normalization
     auto pdf = (exponent_ + 1) / (2.f * PI) * std::pow(cosTheta, exponent_);
-    return {pdf, wi};
+    return {Eval(wi), pdf, wi};
 }
 
 float BlinnPhongSpecular::Pdf(const Vec3f &wi) const
@@ -116,6 +116,14 @@ BxDFSample BSDF::Sample() const
 
     // sample
     auto sample = bxdfs[index]->Sample();
+    
+    // accumulate value and pdf
+    for (int i = 0; i < bxdfs.size(); i ++)
+    {
+        if (index == i)
+            continue;
+        sample.f += bxdfs[i]->Eval(sample.wi);
+    }
     sample.wi = onb.ToWorld(sample.wi);
     sample.pdf = Pdf(sample.wi);
     return sample;
@@ -211,10 +219,10 @@ BxDFSample PhongSpecular::Sample() const
     auto wi = CoordinateSystem(R).ToWorld(vec);
     if (localCos(wi) < 0.f)
     {
-        return {0.f, Vec3f(0.f)};
+        return sNullSample;
     }
     auto pdf = (exponent_ + 1) / (2 * PI) * std::pow(cosTheta, exponent_);
-    return { pdf, wi };
+    return { Eval(wi), pdf, wi };
 }
 
 float PhongSpecular::Pdf(const Vec3f &wi) const

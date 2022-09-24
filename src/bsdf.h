@@ -12,12 +12,9 @@
 // BSDF: world space
 struct BxDFSample
 {
+    Color3f f;
     float pdf;
     Vec3f wi;
-    static BxDFSample Null()
-    {
-        return {0.f, Vec3f(0,0,1)};
-    }
 };
 
 

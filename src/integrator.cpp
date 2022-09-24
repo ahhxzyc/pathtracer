@@ -93,6 +93,7 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
 
         // accumulate path throughput
         beta *= bsdf.Eval(scatterSample.wi) * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
+        //beta *= scatterSample.f * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
 
         // sample contribution
         auto light = nextIsec->primitive->GetAreaLight();
