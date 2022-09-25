@@ -23,6 +23,7 @@ private:
 
 struct Material
 {
+    std::string name;
     std::shared_ptr<Texture> kdMap;
     Vec3f ks;
     Vec3f ke;

@@ -16,6 +16,29 @@ std::optional<Intersection> ListAccel::intersect(Ray &ray) const
     return ret;
 }
 
+bool ListAccel::has_intersection(const Ray &ray) const
+{
+    for (const auto &p : primitives_)
+    {
+        if (p->has_intersection(ray))
+            return true;
+    }
+    return false;
+}
+
+Bound3f ListAccel::BoundingBox() const
+{
+    Bound3f box;
+    for (const auto &p : primitives_)
+        box = box.Union(p->BoundingBox());
+    return box;
+}
+
+Point3f ListAccel::Center() const
+{
+    return BoundingBox().Center();
+}
+
 std::optional<Intersection> BVHAccel::intersect(Ray &ray) const
 {
     BVHNode* nodeStack[64];

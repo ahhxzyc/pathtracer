@@ -15,6 +15,9 @@ public:
     ListAccel(const std::vector<std::shared_ptr<Primitive>> &primitives) : primitives_(primitives) {}
 
     std::optional<Intersection> intersect(Ray &ray) const override;
+    bool                        has_intersection(const Ray &ray) const override;
+    Bound3f                     BoundingBox() const override;
+    Point3f Center() const override;
 
 private:
     std::vector<std::shared_ptr<Primitive>> primitives_;

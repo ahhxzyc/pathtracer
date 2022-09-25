@@ -104,10 +104,20 @@ void Intersection::BuildBSDF()
     auto ks = material->ks;
     auto ns = material->shininess;
 
-    bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
-    if (glm::length(ks) > 0.01f)
+    //bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
+    //if (glm::length(ks) > 0.01f)
+    //{
+    //    bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
+    //}
+
+    if (material->name == "BackWall")
     {
-        bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
+        bsdf.bxdfs.push_back(std::make_shared<SpecularReflection>(localWo));
     }
+    else
+    {
+        bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
+    }
+
     bsdf.init();
 }

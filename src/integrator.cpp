@@ -46,6 +46,7 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
             break;
         is->BuildBSDF();
         auto &bsdf = is->bsdf;
+        bool perfectDelta = (bsdf.num_components(BSDF_Delta) == bsdf.num_components(BSDF_All));
 
         // direct path from eye to light
         auto mat = is->primitive->GetMaterial();
@@ -55,6 +56,7 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
         }
 
         // sample from lights
+        if (!perfectDelta)
         {
             //auto &sampleLog = log.lightSamples.emplace_back();
 
@@ -92,16 +94,22 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
             break;
 
         // accumulate path throughput
-        beta *= bsdf.Eval(scatterSample.wi) * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
-        //beta *= scatterSample.f * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
+        beta *= scatterSample.f * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
 
         // sample contribution
         auto light = nextIsec->primitive->GetAreaLight();
         if (light)
         {
-            auto lightPdf = light->Pdf(is->point, nextIsec->point, nextIsec->normal) / float(scene.lights.size());
-            auto weight = power_heuristic(scatterSample.pdf, lightPdf);
-            L += beta * light->Radiance(ray) * weight;
+            if (scatterSample.isDelta)
+            {
+                L += beta * light->Radiance(ray);
+            }
+            else
+            {
+                auto lightPdf = light->Pdf(is->point, nextIsec->point, nextIsec->normal) / float(scene.lights.size());
+                auto weight = power_heuristic(scatterSample.pdf, lightPdf);
+                L += beta * light->Radiance(ray) * weight;
+            }
 
             //sampleLog.radiance = beta * light->Radiance(ray) * weight;
             //sampleLog.bsdfPdf = scatterSample.pdf;
@@ -145,6 +153,11 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
     //        logFile << std::endl;
     //    }
     //    exit(233);
+    //}
+
+    //if (glm::length(L) > 0.5f)
+    //{
+    //    LOG_INFO("!");
     //}
 
     return L;

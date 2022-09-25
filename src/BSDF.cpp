@@ -1,6 +1,6 @@
 #include "bsdf.h"
 
-static BxDFSample sNullSample = {Color3f(0), 0, Vec3f(0)};
+static BxDFSample sNullSample = {Color3f(0), 0, Vec3f(0), false};
 
 float localCos(const Vec3f &v)
 {
@@ -30,7 +30,7 @@ BxDFSample LambertianDiffuse::Sample() const
              sin(theta) * sin(phi),
              cos(theta));
     auto pdf = std::abs(v[2]) / PI;
-    return { Eval(v), pdf, v };
+    return { Eval(v), pdf, v, false};
 }
 
 float LambertianDiffuse::Pdf(const Vec3f &wi) const
@@ -71,7 +71,7 @@ BxDFSample BlinnPhongSpecular::Sample() const
     }
     // TODO: pdf normalization
     auto pdf = (exponent_ + 1) / (2.f * PI) * std::pow(cosTheta, exponent_);
-    return {Eval(wi), pdf, wi};
+    return {Eval(wi), pdf, wi, false};
 }
 
 float BlinnPhongSpecular::Pdf(const Vec3f &wi) const
@@ -128,13 +128,6 @@ BxDFSample BSDF::Sample() const
     }
     sample.wi = onb.ToWorld(sample.wi);
     return sample;
-
-    //int n = bxdfs.size();
-    //auto index = std::min(static_cast<int>(rand01() * n), n-1);
-    //auto sample = bxdfs[index]->Sample();
-    //sample.wi = onb.ToWorld(sample.wi);
-    //sample.pdf = Pdf(sample.wi);
-    //return sample;
 }
 
 float BSDF::Pdf(const Vec3f &wiW) const
@@ -145,6 +138,17 @@ float BSDF::Pdf(const Vec3f &wiW) const
     for (auto bxdf : bxdfs)
     {
         ret += bxdf->Pdf(wi) * bxdf->samplingWeight;
+    }
+    return ret;
+}
+
+int BSDF::num_components(BxDFType flags) const
+{
+    int ret = 0;
+    for (auto &comp : bxdfs)
+    {
+        if (comp->type & flags)
+            ret ++ ;
     }
     return ret;
 }
@@ -174,6 +178,10 @@ void BSDF::generate_sampling_weights()
 
 void BSDF::ensure_conservation()
 {
+    // white furnace
+    //for (auto comp : bxdfs)
+    //    comp->reflectance = Color3f(1);
+
     Color3f sum(0.f);
     for (auto bxdf : bxdfs)
     {
@@ -225,7 +233,7 @@ BxDFSample PhongSpecular::Sample() const
         return sNullSample;
     }
     auto pdf = (exponent_ + 1) / (2 * PI) * std::pow(cosTheta, exponent_);
-    return { Eval(wi), pdf, wi };
+    return { Eval(wi), pdf, wi, false };
 }
 
 float PhongSpecular::Pdf(const Vec3f &wi) const
@@ -237,4 +245,11 @@ float PhongSpecular::Pdf(const Vec3f &wi) const
     auto R = localReflect(wo_);
     auto LoR = abs_dot(wi, R);
     return (exponent_ + 1) / (2 * PI) * std::pow(LoR, exponent_);
+}
+
+BxDFSample SpecularReflection::Sample() const
+{
+    auto R = localReflect(wo_);
+    auto f = Color3f(1.f) / localCos(R);
+    return {f, 1.f, R, true};
 }

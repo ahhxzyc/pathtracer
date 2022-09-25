@@ -15,7 +15,19 @@ struct BxDFSample
     Color3f f;
     float pdf;
     Vec3f wi;
+    bool isDelta;
 };
+enum BxDFType
+{
+    BSDF_Reflection      = 1 << 0,
+    BSDF_Transmission    = 1 << 1,
+    BSDF_Delta           = 1 << 2,
+    BSDF_All = BSDF_Reflection | BSDF_Transmission | BSDF_Delta
+};
+inline BxDFType operator|(BxDFType a, BxDFType b)
+{
+    return static_cast<BxDFType>(int(a) | int(b));
+}
 
 
 // BRDF & BTDF defined in local solid angle space
@@ -23,13 +35,14 @@ struct BxDFSample
 class BxDF
 {
 public:
-    BxDF(const Color3f &r) : reflectance(r) {}
+    BxDF(const Color3f &r) : reflectance(r) {type = BSDF_Reflection;}
     virtual Color3f Eval(const Vec3f &wi) const = 0;
     virtual BxDFSample Sample() const = 0;
     virtual float Pdf(const Vec3f &wi) const = 0;
 public:
     Color3f reflectance;
     float samplingWeight;
+    BxDFType type;
 };
 
 class LambertianDiffuse : public BxDF
@@ -69,6 +82,17 @@ private:
     Vec3f wo_;
 };
 
+class SpecularReflection : public BxDF
+{
+public:
+    SpecularReflection(const Vec3f &wo) : BxDF(Color3f(1)), wo_(wo) {type = BSDF_Reflection | BSDF_Delta;}
+    virtual Color3f Eval(const Vec3f &wi) const override {return Color3f(0); }
+    virtual BxDFSample Sample() const override;
+    virtual float Pdf(const Vec3f &wi) const override {return 0.f;}
+private:
+    Vec3f wo_;
+};
+
 
 class BSDF
 {
@@ -77,6 +101,7 @@ public:
     BxDFSample Sample() const;
     float Pdf(const Vec3f &wiW) const;
 
+    int num_components(BxDFType flags) const;
     void generate_sampling_weights();
     void ensure_conservation();
     void init();

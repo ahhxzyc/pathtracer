@@ -40,6 +40,9 @@ void Scene::add_model(const std::string &dir, const std::string &name)
         mats.push_back(std::make_shared<Material>());
         auto &mat = mats.back();
 
+        // name
+        mat->name = tmat.name;
+
         // diffuse map
         if (tmat.diffuse_texname.empty())
             mat->kdMap = std::make_shared<Texture>(Vec3f(tmat.diffuse[0], tmat.diffuse[1], tmat.diffuse[2]));
