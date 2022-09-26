@@ -55,6 +55,8 @@ void Scene::add_model(const std::string &dir, const std::string &name)
         // specular shininess
         mat->shininess = tmat.shininess;
 
+        mat->ior = tmat.ior;
+
         // light radiance
         auto it = lightRadiance_.find(tmat.name);
         if (it != lightRadiance_.end())
@@ -103,9 +105,9 @@ void Scene::add_model(const std::string &dir, const std::string &name)
                 tri.p[v].y = attrib.vertices[3 * idx.vertex_index + 1];
                 tri.p[v].z = attrib.vertices[3 * idx.vertex_index + 2];
 
-                tri.n[v].x = attrib.normals[3 * idx.vertex_index + 0];
-                tri.n[v].y = attrib.normals[3 * idx.vertex_index + 1];
-                tri.n[v].z = attrib.normals[3 * idx.vertex_index + 2];
+                tri.n[v].x = attrib.normals[3 * idx.normal_index + 0];
+                tri.n[v].y = attrib.normals[3 * idx.normal_index + 1];
+                tri.n[v].z = attrib.normals[3 * idx.normal_index + 2];
 
                 tri.uv[v].x = attrib.texcoords[2 * idx.texcoord_index + 0];
                 tri.uv[v].y = attrib.texcoords[2 * idx.texcoord_index + 1];

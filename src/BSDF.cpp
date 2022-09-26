@@ -6,6 +6,10 @@ float localCos(const Vec3f &v)
 {
     return v.z;
 }
+float localAbsoluteCos(const Vec3f &v)
+{
+    return std::abs(v.z);
+}
 Vec3f localReflect(const Vec3f &v)
 {
     return Vec3f(-v.x, -v.y, v.z);
@@ -14,15 +18,30 @@ Vec3f reflect(const Vec3f &v, const Vec3f &normal)
 {
     return -v + normal * 2.f * glm::dot(normal, v);
 }
+Vec3f faceForward(const Vec3f &n, const Vec3f &v)
+{
+    return glm::dot(n, v) < 0.f ? -n : n;
+}
+float fresnel_dielectric(float ior_i, float ior_t, float cos_i, float cos_t)
+{
+    auto rpara = (ior_t * cos_i - ior_i * cos_t) / (ior_t * cos_i + ior_i * cos_t);
+    auto rperp = (ior_i * cos_i - ior_t * cos_t) / (ior_i * cos_i + ior_t * cos_t);
+    return (rpara * rpara + rperp * rperp) * 0.5f;
+}
 
 Color3f LambertianDiffuse::Eval(const Vec3f &wi) const
 {
-    auto NoL = localCos(wi);
-    return NoL > 0.f ? reflectance / PI : Color3f(0);
+    auto NoL = localCos(wi), NoV = localCos(wo_);
+    if (NoL < 0.f || NoV < 0.f)
+        return Color3f(0.f);
+    return reflectance / PI;
 }
 
 BxDFSample LambertianDiffuse::Sample() const
 {
+    if (localCos(wo_) < 0.f)
+        return sNullSample;
+
     // cosine hemisphere sampling
     float phi = rand01() * 2 * PI;
     float theta = 0.5f * acos(1 - 2 * rand01());
@@ -35,8 +54,11 @@ BxDFSample LambertianDiffuse::Sample() const
 
 float LambertianDiffuse::Pdf(const Vec3f &wi) const
 {
+    auto NoV = localCos(wo_);
     auto NoL = localCos(wi);
-    return NoL > 0.f ? NoL / PI : 0.f;
+    if (NoV < 0.f || NoL < 0.f)
+        return 0.f;
+    return NoL / PI;
 }
 
 Color3f BlinnPhongSpecular::Eval(const Vec3f &wi) const
@@ -54,6 +76,10 @@ Color3f BlinnPhongSpecular::Eval(const Vec3f &wi) const
 
 BxDFSample BlinnPhongSpecular::Sample() const
 {
+    auto NoV = localCos(wo_);
+    if (NoV < 0.f)
+        return sNullSample;
+
     // random halfway vector
     auto u = rand01(), v = rand01();
     auto phi = 2 * PI * u;
@@ -94,10 +120,6 @@ Color3f BSDF::Eval(const Vec3f &wiW) const
     {
         ret += bxdf->Eval(wi);
     }
-    //if (glm::length(ret) > 2.f)
-    //{
-    //    LOG_INFO("{},{},{}", ret.x, ret.y, ret.z);
-    //}
     return ret;
 }
 
@@ -215,6 +237,10 @@ Color3f PhongSpecular::Eval(const Vec3f &wi) const
 
 BxDFSample PhongSpecular::Sample() const
 {
+    auto NoV = localCos(wo_);
+    if (NoV < 0.f)
+        return sNullSample;
+
     // random vector in reflect space
     auto u = rand01(), v = rand01();
     auto phi = 2 * PI * u;
@@ -249,7 +275,77 @@ float PhongSpecular::Pdf(const Vec3f &wi) const
 
 BxDFSample SpecularReflection::Sample() const
 {
+    auto NoV = localCos(wo_);
+    if (NoV < 0.f)
+        return sNullSample;
+
     auto R = localReflect(wo_);
     auto f = Color3f(1.f) / localCos(R);
     return {f, 1.f, R, true};
+}
+
+BxDFSample SpecularTransmission::Sample() const
+{
+    float eta_o = 1.f, eta_i = ior_;
+    if (backface_)
+        std::swap(eta_o, eta_i);
+    float cos_o = backface_ ? -localCos(wo_) : localCos(wo_);
+    float sin_o = std::sqrt(1.f - cos_o * cos_o);
+    float sin_i = eta_o / eta_i * sin_o;
+    if (sin_i > 1.f)
+    {
+        // total internal reflection
+        return sNullSample;
+    }
+
+    float cos_i = std::sqrt(1.f - sin_i * sin_i);
+    auto fresnel = fresnel_dielectric(eta_o, eta_i, cos_o, cos_i);
+    auto f = Color3f(1) * eta_o * eta_o / (eta_i * eta_i) * (1.f - fresnel) / cos_i;
+    auto wi = - eta_o / eta_i * wo_ + 
+        (eta_o / eta_i * cos_o - cos_i) * Vec3f(0,0,1);
+    return {f, 1.f, wi, true};
+}
+
+BxDFSample SpecularReflectionAndTransmission::Sample() const
+{
+    auto backface = localCos(wo_) < 0.f;
+    float eta_o = 1.f, eta_i = ior_;
+    if (backface)
+        std::swap(eta_o, eta_i);
+    Vec3f n = backface ? Vec3f(0,0,-1) : Vec3f(0,0,1);
+    float cos_o = backface ? -localCos(wo_) : localCos(wo_);
+    float sin_o = std::sqrt(1.f - cos_o * cos_o);
+    float sin_i = eta_o / eta_i * sin_o;
+    float cos_i = 0.f;
+
+    // calculate fresnel
+    float fresnel = 0.f;
+    if (sin_i > 1.f)
+        fresnel = 1.f;
+    else
+    {
+        cos_i = std::sqrt(1.f - sin_i*sin_i);
+        fresnel = fresnel_dielectric(eta_o, eta_i, cos_o, cos_i);
+    }
+
+    BxDFSample sample;
+    sample.isDelta = true;
+    if (rand01() < fresnel)
+    {
+        auto wi = localReflect(wo_);
+        sample.f = fresnel * Color3f(1.f) / localAbsoluteCos(wi);
+        sample.wi = wi;
+        sample.pdf = fresnel;
+        //LOG_INFO("reflect, fresnel: {}", fresnel);
+    }
+    else
+    {
+        auto eta = eta_o / eta_i;
+        auto wi = - eta * wo_ + (eta * cos_o - cos_i) * n;
+        sample.f = (1 - fresnel) * Color3f(1) * eta * eta / cos_i;
+        sample.wi = wi;
+        sample.pdf = 1.f - fresnel;
+        //LOG_INFO("transmit, cos: {}->{}", cos_o, cos_i);
+    }
+    return sample;
 }

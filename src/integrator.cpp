@@ -24,26 +24,13 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
 {
     Color3f L = Color3f(0.f);
 
-    struct IntegratorLog
-    {
-        struct SampleLog
-        {
-            Color3f radiance;
-            float lightPdf;
-            float bsdfPdf;
-            float weight;
-        };
-        std::vector<SampleLog> lightSamples;
-        std::vector<SampleLog> bsdfSamples;
-    };
-    IntegratorLog log;
-
     Color3f beta(1.f);
     auto is = scene.accel->intersect(Ray(ray));
     for (int bounces = 0; ; bounces ++ )
     {
-        if (!is || is->backface)
+        if (!is)
             break;
+
         is->BuildBSDF();
         auto &bsdf = is->bsdf;
         bool perfectDelta = (bsdf.num_components(BSDF_Delta) == bsdf.num_components(BSDF_All));
@@ -58,8 +45,6 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
         // sample from lights
         if (!perfectDelta)
         {
-            //auto &sampleLog = log.lightSamples.emplace_back();
-
             // uniformly choose a light
             auto u = rand01();
             int n = scene.lights.size();
@@ -74,15 +59,8 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
                 auto currentBeta = bsdf.Eval(sample.wi) * glm::dot(is->normal, sample.wi) / sample.pdf * invPdf;
                 auto weight = power_heuristic(sample.pdf / invPdf, bsdf.Pdf(sample.wi));
                 L += beta * currentBeta * sample.Le * weight ;
-
-                //sampleLog.radiance = beta * currentBeta * sample.Le * weight;
-                //sampleLog.lightPdf = sample.pdf / invPdf;
-                //sampleLog.bsdfPdf = bsdf.Pdf(sample.wi);
-                //sampleLog.weight = weight;
             }
         }
-
-        //auto &sampleLog = log.bsdfSamples.emplace_back();
 
         // sample BSDF
         auto scatterSample = bsdf.Sample();
@@ -90,31 +68,26 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
             break;
         Ray ray(is->point, scatterSample.wi);
         auto nextIsec = scene.accel->intersect(ray);
-        if (!nextIsec || nextIsec->backface)
+        if (!nextIsec)
             break;
 
         // accumulate path throughput
-        beta *= scatterSample.f * glm::dot(is->normal, scatterSample.wi) / scatterSample.pdf;
+        beta *= scatterSample.f * std::abs(glm::dot(is->normal, scatterSample.wi)) / scatterSample.pdf;
 
         // sample contribution
         auto light = nextIsec->primitive->GetAreaLight();
-        if (light)
+        if (light && !nextIsec->backface)
         {
             if (scatterSample.isDelta)
             {
-                L += beta * light->Radiance(ray);
+                L += beta * light->radiance;
             }
             else
             {
                 auto lightPdf = light->Pdf(is->point, nextIsec->point, nextIsec->normal) / float(scene.lights.size());
                 auto weight = power_heuristic(scatterSample.pdf, lightPdf);
-                L += beta * light->Radiance(ray) * weight;
+                L += beta * light->radiance * weight;
             }
-
-            //sampleLog.radiance = beta * light->Radiance(ray) * weight;
-            //sampleLog.bsdfPdf = scatterSample.pdf;
-            //sampleLog.lightPdf = lightPdf;
-            //sampleLog.weight = weight;
         }
 
         is = nextIsec;
@@ -128,38 +101,6 @@ Color3f PathIntegrator::radiance(const Ray& ray, const Scene &scene, int depth /
             beta /= q;
         }
     }
-
-    //if (glm::length(L) > 10000.f)
-    //{
-    //    std::ofstream logFile("log.txt");
-    //    for (auto &sample : log.lightSamples)
-    //    {
-    //        auto &rad = sample.radiance;
-    //        logFile << "light sample:\n";
-    //        logFile << "  L: " << std::setprecision(3) << std::fixed << rad.x << ',' << rad.y << ',' << rad.z << std::endl;
-    //        logFile << "  pl: " << sample.lightPdf << std::endl;
-    //        logFile << "  pb: " << sample.bsdfPdf << std::endl;
-    //        logFile << "  w: " << sample.weight << std::endl;
-    //        logFile << std::endl;
-    //    }
-    //    for (auto &sample : log.bsdfSamples)
-    //    {
-    //        auto &rad = sample.radiance;
-    //        logFile << "bsdf sample:\n";
-    //        logFile << "  L: " << std::setprecision(3) << std::fixed << rad.x << ',' << rad.y << ',' << rad.z << std::endl;
-    //        logFile << "  pl: " << sample.lightPdf << std::endl;
-    //        logFile << "  pb: " << sample.bsdfPdf << std::endl;
-    //        logFile << "  w: " << sample.weight << std::endl;
-    //        logFile << std::endl;
-    //    }
-    //    exit(233);
-    //}
-
-    //if (glm::length(L) > 0.5f)
-    //{
-    //    LOG_INFO("!");
-    //}
-
     return L;
 }
 
@@ -282,11 +223,6 @@ Color3f WhiteFurnaceIntegrator::radiance(const Ray &ray, const Scene &scene, int
                 break;
             beta /= q;
         }
-    }
-
-    if (std::isnan(L.x) || std::isnan(L.y) || std::isnan(L.z))
-    {
-        LOG_INFO("nan");
     }
 
     return L;

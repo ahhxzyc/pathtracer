@@ -48,10 +48,12 @@ public:
 class LambertianDiffuse : public BxDF
 {
 public:
-    LambertianDiffuse(const Color3f &r) : BxDF(r) {}
+    LambertianDiffuse(const Color3f &r, const Vec3f &wo) : BxDF(r), wo_(wo) {}
     virtual Color3f Eval(const Vec3f &wi) const override;
     virtual BxDFSample Sample() const override;
     virtual float Pdf(const Vec3f &wi) const override;
+private:
+    Vec3f wo_;
 };
 
 class PhongSpecular : public BxDF
@@ -91,6 +93,39 @@ public:
     virtual float Pdf(const Vec3f &wi) const override {return 0.f;}
 private:
     Vec3f wo_;
+};
+
+class SpecularTransmission : public BxDF
+{
+public:
+    SpecularTransmission(const float &ior, const Vec3f &wo, bool backface)
+        : BxDF(Color3f(1)), wo_(wo), ior_(ior), backface_(backface)
+    { 
+        type = BSDF_Transmission | BSDF_Delta; 
+    }
+    virtual Color3f Eval(const Vec3f &wi) const override { return Color3f(0); }
+    virtual BxDFSample Sample() const override;
+    virtual float Pdf(const Vec3f &wi) const override { return 0.f; }
+private:
+    Vec3f wo_;
+    float ior_;
+    bool backface_;
+};
+
+class SpecularReflectionAndTransmission : public BxDF
+{
+public:
+    SpecularReflectionAndTransmission(const float &ior, const Vec3f &wo)
+        : BxDF(Color3f(1)), wo_(wo), ior_(ior)
+    {
+        type = BSDF_Reflection | BSDF_Transmission | BSDF_Delta;
+    }
+    virtual Color3f Eval(const Vec3f &wi) const override { return Color3f(0); }
+    virtual BxDFSample Sample() const override;
+    virtual float Pdf(const Vec3f &wi) const override { return 0.f; }
+private:
+    Vec3f wo_;
+    float ior_;
 };
 
 

@@ -22,7 +22,7 @@ LightSample AreaLight::Sample(const Intersection &ref) const
 
     LightSample ret;
     ret.point   = sample.point;
-    ret.Le      = radiance_;
+    ret.Le      = radiance;
     ret.wi      = wi;
     ret.pdf     = pdf;
     return ret;
@@ -38,7 +38,10 @@ float AreaLight::Pdf(const Point3f &refPoint, const Vec3f &lightPoint, const Vec
 
 Color3f AreaLight::Radiance(const Ray &ray) const
 {
-    return radiance_;
+    auto is = primitive_.intersect(Ray(ray));
+    if (!is || glm::dot(is->normal, -ray.dir) < 0.f)
+        return Color3f(0);
+    return radiance;
 }
 
 Point3f AreaLight::Center() const

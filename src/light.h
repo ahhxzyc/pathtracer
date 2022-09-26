@@ -28,15 +28,16 @@ class AreaLight : public Light
 {
 public:
     AreaLight(const GeometricPrimitive& primitive, const Color3f &radiance) : 
-        primitive_(primitive), radiance_(radiance) { }
+        primitive_(primitive), radiance(radiance) { }
 
-    Color3f L() const {return radiance_;}
+    Color3f L() const {return radiance;}
 
     virtual LightSample Sample(const Intersection &ref) const override;
     virtual float Pdf(const Point3f &refPoint, const Vec3f &lightPoint, const Vec3f &lightNormal) const override;
     virtual Color3f Radiance(const Ray &ray) const override;
     virtual Point3f Center() const override;
+public:
+    Color3f radiance;
 private:
     const GeometricPrimitive &primitive_ ;
-    Color3f radiance_;
 };

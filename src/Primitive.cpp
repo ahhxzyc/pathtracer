@@ -25,7 +25,7 @@ std::optional<Intersection> Triangle::intersect(Ray &ray) const
         is.wo = -ray.dir;
         if (glm::dot(ray.dir, is.normal) > 0.f)
         {
-            is.normal = -is.normal;
+            //is.normal = -is.normal;
             is.backface = true;
         }
         return {is};
@@ -104,20 +104,17 @@ void Intersection::BuildBSDF()
     auto ks = material->ks;
     auto ns = material->shininess;
 
-    //bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
-    //if (glm::length(ks) > 0.01f)
-    //{
-    //    bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
-    //}
-
-    if (material->name == "BackWall")
+    if (material->ior > 1.f)
     {
-        bsdf.bxdfs.push_back(std::make_shared<SpecularReflection>(localWo));
+        bsdf.bxdfs.push_back(std::make_shared<SpecularReflectionAndTransmission>(material->ior, localWo));
     }
     else
     {
-        bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd));
+        bsdf.bxdfs.push_back(std::make_shared<LambertianDiffuse>(kd, localWo));
+        if (glm::length(ks) > 0.01f)
+        {
+            bsdf.bxdfs.push_back(std::make_shared<BlinnPhongSpecular>(ks, ns, localWo));
+        }
     }
-
     bsdf.init();
 }
