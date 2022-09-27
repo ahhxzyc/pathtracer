@@ -6,5 +6,4 @@
 
 <img src="gallery/veach.png" alt="Veach Scene" style="zoom:67%;" />
 
-
-
+<img src="gallery/bedroom.png" alt="Bedroom scene" style="zoom:67%;" />
